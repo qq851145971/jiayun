@@ -3,6 +3,7 @@ namespace app\index\controller;
 use think\Db;
 use think\facade\Request;
 use \Firebase\JWT\JWT;
+use think\Config;
 class Index
 {
     public function index()
@@ -21,14 +22,19 @@ class Index
       return  json($data)->code(201)->header(['Cache-control' => '1']);
     }
     public function jwt(){
-        $key = "huang";  //这里是自定义的一个随机字串，应该写在config文件中的，解密时也会用，相当    于加密中常用的 盐  salt
+        $key = "2f5cdce3b2e1e98d421ab144fa03ad4c0f8d59020a0ec5ec9726a97d277fd23da1909d0475a302818c9bfb98f60dd146da452d9e003ba2746ede8edfbf97288f";  //这里是自定义的一个随机字串，应该写在config文件中的，解密时也会用，相当    于加密中常用的 盐  salt
         $token = [
-            "iss"=>"",  //签发者 可以为空
-            "aud"=>"", //面象的用户，可以为空
+            "member"=>[
+                "id"=>'a8c076a3-d910-4801-b887-30fdfb6ad1a5'
+            ],
+            "client"=>[
+                "id"=>"05522fa3-6002-4462-bcea-d36dcfda7e34",
+                "code"=>2,
+                "official"=>false
+            ],
             "iat" => time(), //签发时间
-            "nbf" => time()+1, //在什么时候jwt开始生效  （这里表示生成100秒后才生效）
-            "exp" => time()+7200, //token 过期时间
-            "uid" => 123 //记录的userid的信息，这里是自已添加上去的，如果有其它信息，可以再添加数组的键值对
+            "nbf" => time(), //在什么时候jwt开始生效  （这里表示生成100秒后才生效）
+            "exp" => time()+720000, //token 过期时间
         ];
         $jwt = JWT::encode($token,$key,"HS512"); //根据参数生成了 token
         return json([
@@ -37,9 +43,50 @@ class Index
     }
 
     public function check(){
-        $jwt = input("token");  //上一步中返回给用户的token
+        $jwt ="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJtZW1iZXIiOnsiaWQiOiJhOGMwNzZhMy1kOTEwLTQ4MDEtYjg4Ny0zMGZkZmI2YWQxYTUifSwiY2xpZW50Ijp7ImlkIjoiMDU1MjJmYTMtNjAwMi00NDYyLWJjZWEtZDM2ZGNmZGE3ZTM0IiwiY29kZSI6Miwib2ZmaWNpYWwiOmZhbHNlfSwiaWF0IjoxNTU3NzI5MDYwLCJuYmYiOjE1NTc3MjkwNjAsImV4cCI6MTU1NzczNjI2MH0.WoOk_DsqKnxQ7Mo4hnAS-nxpd4IWSq13z-9xRyApXzeDkpkMm5ABa3iN10pCDu_9bVn6hrcw6jOLLSv2omFy1Q";  //上一步中返回给用户的token
         $key = "2f5cdce3b2e1e98d421ab144fa03ad4c0f8d59020a0ec5ec9726a97d277fd23da1909d0475a302818c9bfb98f60dd146da452d9e003ba2746ede8edfbf97288f";  //上一个方法中的 $key 本应该配置在 config文件中的
         $info = JWT::decode($jwt,$key,["HS512"]); //解密jwt
         return json($info);
+    }
+    public function files(){
+        $get=input('get.');
+        if (!isset($get['folder']))$get['folder']="/";
+        if (!isset($get['page']))$get['page']="1";
+        $jwt="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJtZW1iZXIiOnsiaWQiOiJhOGMwNzZhMy1kOTEwLTQ4MDEtYjg4Ny0zMGZkZmI2YWQxYTUifSwiY2xpZW50Ijp7ImlkIjoiMDU1MjJmYTMtNjAwMi00NDYyLWJjZWEtZDM2ZGNmZGE3ZTM0IiwiY29kZSI6Miwib2ZmaWNpYWwiOmZhbHNlfSwiaWF0IjoxNTU3NzM2MjkzLCJuYmYiOjE1NTc3MzYyOTMsImV4cCI6MTU1ODQ1NjI5M30.tdPbX_Gin-OwsJsgZm4TuVFL8C3bUlbLkhU6W59Eq6Byx6_Nngc3CIVPqQns5reZiFsNHztlHatiCV7iRrPnvw";
+        $tot=check($jwt);
+        $files=Db::table('data_files')->where('client_id',$tot->client->id)->where('member_id',$tot->member->id)->where('folder',$get['folder'])->select();
+        $foldersAll=Db::table('file_folders')->where('member_id',$tot->member->id)->select();
+        $folders=Db::table('file_folders')->where('member_id',$tot->member->id)->where('id',$files[0]['folder_id'])->find();
+        $foldersAry=getTree($foldersAll,$folders['id']);
+        foreach ($files as $k =>$v){
+            $access_type=$v['access_type']==0?'private':'public';
+            $filesAll[]=[
+                'id'=>$v['id'],
+                'access_type'=>$access_type,
+                'filename'=>$v['filename'],
+                'size'=>$v['size'],
+                'download_link'=>Config('evn.download_link')."/".$access_type."/".$tot->member->id."/".Config('evn.app')."/".$v['id']."?".$v['download_url'],
+                'thumbnail'=>"",
+                'content_type'=>$v['content_type'],
+                'folder'=>$v['folder'],
+                'created_at'=>strtotime($v['created_at']),
+                'updated_at'=>strtotime($v['updated_at']),
+                'last_modified_time'=>$v['last_modified_time'],
+                'is_deleted'=>empty($v['deleted_at'])?'false':'true',
+                'mission_result'=>"",
+            ];
+        }
+        $data=[
+            'folder'=>$get['folder'],
+            'sub_folders'=>$foldersAry,
+            'files'=>$filesAll
+        ];
+         return show('17pdf', $code = "0,0",$msg ="",$errors = [],$data);
+    }
+    public function testCheck(){
+        $get=input('get.');
+        $jwt="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJtZW1iZXIiOnsiaWQiOiJlMWViNmE2MS01ODkzLTQ4ZDQtOThjZC1hMGQ3NWJjZGIzOTQifSwiY2xpZW50Ijp7ImlkIjoiOGQzMmYwYmM3ZWVkNWUxNmY3NTEzMmZjNGNkMzRkNmEwZTU3N2YyMjU2MTBiMDg5ZjJjN2U0ZmRlZjNiOGE4MSIsImNvZGUiOjIsIm9mZmljaWFsIjpmYWxzZX0sImV4cCI6MTU1ODc0OTY5NCwiaWF0IjoxNTU3NDUzNjk0LCJybmQiOiIwMzVmNWZjYzZjNjY4OGYzMjQ2NTViNjlhMWViZGZiOCJ9.gPCAT7BiiBZ67jyDfZKDWZg9cTv5vzkDSW2CXYDQRuw20vY6gfKCeEw4Pjac9UI2urWqGDeqKBJKk6bPOPladA";
+        $tot=check($jwt);
+        dump($get);
     }
 }
