@@ -4,7 +4,7 @@ use think\Db;
 use think\facade\Request;
 use \Firebase\JWT\JWT;
 use think\Config;
-class Index
+class Index extends Base
 {
     public function index()
     {
@@ -41,52 +41,121 @@ class Index
             "token"=>$jwt
         ]);
     }
-
+    private $getFilename="";
     public function check(){
         $jwt ="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJtZW1iZXIiOnsiaWQiOiJhOGMwNzZhMy1kOTEwLTQ4MDEtYjg4Ny0zMGZkZmI2YWQxYTUifSwiY2xpZW50Ijp7ImlkIjoiMDU1MjJmYTMtNjAwMi00NDYyLWJjZWEtZDM2ZGNmZGE3ZTM0IiwiY29kZSI6Miwib2ZmaWNpYWwiOmZhbHNlfSwiaWF0IjoxNTU3NzI5MDYwLCJuYmYiOjE1NTc3MjkwNjAsImV4cCI6MTU1NzczNjI2MH0.WoOk_DsqKnxQ7Mo4hnAS-nxpd4IWSq13z-9xRyApXzeDkpkMm5ABa3iN10pCDu_9bVn6hrcw6jOLLSv2omFy1Q";  //上一步中返回给用户的token
         $key = "2f5cdce3b2e1e98d421ab144fa03ad4c0f8d59020a0ec5ec9726a97d277fd23da1909d0475a302818c9bfb98f60dd146da452d9e003ba2746ede8edfbf97288f";  //上一个方法中的 $key 本应该配置在 config文件中的
         $info = JWT::decode($jwt,$key,["HS512"]); //解密jwt
         return json($info);
     }
+
+    /**
+     * 获取文件列表
+     * @return \think\response\Json
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     */
     public function files(){
         $get=input('get.');
         if (!isset($get['folder']))$get['folder']="/";
         if (!isset($get['page']))$get['page']="1";
-        $jwt="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJtZW1iZXIiOnsiaWQiOiJhOGMwNzZhMy1kOTEwLTQ4MDEtYjg4Ny0zMGZkZmI2YWQxYTUifSwiY2xpZW50Ijp7ImlkIjoiMDU1MjJmYTMtNjAwMi00NDYyLWJjZWEtZDM2ZGNmZGE3ZTM0IiwiY29kZSI6Miwib2ZmaWNpYWwiOmZhbHNlfSwiaWF0IjoxNTU3NzM2MjkzLCJuYmYiOjE1NTc3MzYyOTMsImV4cCI6MTU1ODQ1NjI5M30.tdPbX_Gin-OwsJsgZm4TuVFL8C3bUlbLkhU6W59Eq6Byx6_Nngc3CIVPqQns5reZiFsNHztlHatiCV7iRrPnvw";
-        $tot=check($jwt);
-        $files=Db::table('data_files')->where('client_id',$tot->client->id)->where('member_id',$tot->member->id)->where('folder',$get['folder'])->select();
-        $foldersAll=Db::table('file_folders')->where('member_id',$tot->member->id)->select();
-        $folders=Db::table('file_folders')->where('member_id',$tot->member->id)->where('id',$files[0]['folder_id'])->find();
-        $foldersAry=getTree($foldersAll,$folders['id']);
-        foreach ($files as $k =>$v){
-            $access_type=$v['access_type']==0?'private':'public';
-            $filesAll[]=[
-                'id'=>$v['id'],
-                'access_type'=>$access_type,
-                'filename'=>$v['filename'],
-                'size'=>$v['size'],
-                'download_link'=>Config('evn.download_link')."/".$access_type."/".$tot->member->id."/".Config('evn.app')."/".$v['id']."?".$v['download_url'],
-                'thumbnail'=>"",
-                'content_type'=>$v['content_type'],
-                'folder'=>$v['folder'],
-                'created_at'=>strtotime($v['created_at']),
-                'updated_at'=>strtotime($v['updated_at']),
-                'last_modified_time'=>$v['last_modified_time'],
-                'is_deleted'=>empty($v['deleted_at'])?'false':'true',
-                'mission_result'=>"",
-            ];
+        $files=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder',$get['folder'])->limit(20)->page($get['page'])->select();
+        $filesCount=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder',$get['folder'])->count();
+        $countFiles=count($files);
+        if (empty($files)){
+            $foldersAry=$filesAll=[];
+//            $files=Db::table('data_files')->where('client_id',$tot->client->id)->where('member_id',$tot->member->id)->where('folder',$get['folder'])->limit(1)->page(1)->select();
+//            $folders=Db::table('file_folders')->where('member_id',$tot->member->id)->where('id',$files[0]['folder_id'])->find();
+//            $foldersAll=Db::table('file_folders')->where('member_id',$tot->member->id)->select();
+//            $foldersAry=getTree($foldersAll,$folders['id']);
+        }else{
+            $folders=Db::table('file_folders')->where('member_id',$this->member_id)->where('id',$files[0]['folder_id'])->find();
+            $foldersAll=Db::table('file_folders')->where('member_id',$this->member_id)->select();
+            $foldersAry=getTree($foldersAll,$folders['id']);
+            foreach ($files as $k =>$v){
+                $access_type=$v['access_type']==0?'private':'public';
+                $filesAll[]=[
+                    'id'=>$v['id'],
+                    'access_type'=>$access_type,
+                    'filename'=>$v['filename'],
+                    'size'=>$v['size'],
+                    'download_link'=>Config('env.download_link')."/".$access_type."/".$this->member_id."/".Config('env.app')."/".$v['id']."?".$v['download_url'],
+                    'thumbnail'=>"",
+                    'content_type'=>$v['content_type'],
+                    'folder'=>$v['folder'],
+                    'created_at'=>strtotime($v['created_at']),
+                    'updated_at'=>strtotime($v['updated_at']),
+                    'last_modified_time'=>$v['last_modified_time'],
+                    'is_deleted'=>empty($v['deleted_at'])?'false':'true',
+                    'mission_result'=>"",
+                ];
+            }
         }
         $data=[
             'folder'=>$get['folder'],
             'sub_folders'=>$foldersAry,
-            'files'=>$filesAll
+            'page'=>[
+                'current_page'=>$get['page'],
+                'page_size'=>20,
+                'total_pages'=>$filesCount,
+                'total'=>$countFiles
+            ],
+            'files'=>$filesAll,
+
         ];
          return show('17pdf', $code = "0,0",$msg ="",$errors = [],$data);
     }
     public function testCheck(){
         $get=input('get.');
-        $jwt="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJtZW1iZXIiOnsiaWQiOiJlMWViNmE2MS01ODkzLTQ4ZDQtOThjZC1hMGQ3NWJjZGIzOTQifSwiY2xpZW50Ijp7ImlkIjoiOGQzMmYwYmM3ZWVkNWUxNmY3NTEzMmZjNGNkMzRkNmEwZTU3N2YyMjU2MTBiMDg5ZjJjN2U0ZmRlZjNiOGE4MSIsImNvZGUiOjIsIm9mZmljaWFsIjpmYWxzZX0sImV4cCI6MTU1ODc0OTY5NCwiaWF0IjoxNTU3NDUzNjk0LCJybmQiOiIwMzVmNWZjYzZjNjY4OGYzMjQ2NTViNjlhMWViZGZiOCJ9.gPCAT7BiiBZ67jyDfZKDWZg9cTv5vzkDSW2CXYDQRuw20vY6gfKCeEw4Pjac9UI2urWqGDeqKBJKk6bPOPladA";
-        $tot=check($jwt);
-        dump($get);
+        $tot=check($get['jwt']);
+        dump($tot);
     }
+    public function up()
+    {
+        return $this->fetch();
+    }
+
+    public function upload(){
+        $file = request()->file('file');
+        $info = $file->move('./uploads','');
+        if ($info) {
+            $path = $info->getSaveName();
+            $filepath = 'http://localhost/kd/public/uploads/'.$info->getSaveName();
+            $this->getFilename=$info->getFilename();
+            $fileName = $this->client_name ."/".guid();
+            $resInfo=$this->uploadFile(Config('env.aliyun_oss.Bucket'), $fileName, $info->getPathname());
+//            Db::table('data_files')->where('member_id',$this->member_id)->where('client_id',$this->client_id)->where('etag',$resInfo['etag'])->
+            dump($resInfo);
+        } else {
+            // 上传失败获取错误信息
+            echo $file->getError();
+        }
+    }
+
+    private function new_oss(){
+        $oss=new \OSS\OssClient(Config('env.aliyun_oss.KeyId'),Config('env.aliyun_oss.KeySecret'),Config('env.aliyun_oss.Endpoint'));
+        return $oss;
+    }
+    public function uploadFile($bucket,$object,$Path)
+    {
+        $options = array(
+            'headers' => array(
+                'Content-Disposition' => 'attachment; filename="'.$this->getFilename.'"',
+                'x-oss-meta-self-define-title' => 'user define meta info',
+            ));
+        try {
+            $ossClient = $this->new_oss();
+            //uploadFile的上传方法
+            $res = $ossClient->uploadFile($bucket, $object, $Path,$options);
+            return $res;
+        } catch (OssException $e) {
+            //如果出错这里返回报错信息
+            return $e->getMessage();
+        }
+    }
+    public function uuid(){
+        dump($this->client_name);
+    }
+
 }
