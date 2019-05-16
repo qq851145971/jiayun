@@ -80,7 +80,7 @@ class Index extends Base
                     'access_type'=>$access_type,
                     'filename'=>$v['filename'],
                     'size'=>$v['size'],
-                    'download_link'=>Config('env.download_link')."/".$access_type."/".$this->member_id."/".Config('env.app')."/".$v['id']."?".$v['download_url'],
+                    'download_link'=>Config('env.oss_custom_host')."/".$access_type."/".$this->member_id."/".Config('env.app')."/".$v['id']."?".$v['download_url'],
                     'thumbnail'=>"",
                     'content_type'=>$v['content_type'],
                     'folder'=>$v['folder'],

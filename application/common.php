@@ -43,8 +43,8 @@ function getTree($data, $pId,$folder='')
     $tree = [];
     foreach($data as $k => $v)
     {
-        if($v['parent_id'] === $pId)
-        {        //父亲找到儿子
+        if($v['parent_id'] === $pId) // 父亲找到儿子
+        {
             $count=Db::table('data_files')->where('folder_id',$v['id'])->count();
             unset($v['parent_id']);
             unset($v['member_id']);
