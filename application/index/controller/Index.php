@@ -2,55 +2,22 @@
 namespace app\index\controller;
 use think\Db;
 use think\facade\Request;
-use \Firebase\JWT\JWT;
 use think\Config;
 class Index extends Base
 {
-    public function index()
-    {
-        return '<style type="text/css">*{ padding: 0; margin: 0; } div{ padding: 4px 48px;} a{color:#2E5CD5;cursor: pointer;text-decoration: none} a:hover{text-decoration:underline; } body{ background: #fff; font-family: "Century Gothic","Microsoft yahei"; color: #333;font-size:18px;} h1{ font-size: 100px; font-weight: normal; margin-bottom: 12px; } p{ line-height: 1.6em; font-size: 42px }</style><div style="padding: 24px 48px;"> <h1>:) </h1><p> ThinkPHP V5.1<br/><span style="font-size:30px">12载初心不改（2006-2018） - 你值得信赖的PHP框架</span></p></div><script type="text/javascript" src="https://tajs.qq.com/stats?sId=64890268" charset="UTF-8"></script><script type="text/javascript" src="https://e.topthink.com/Public/static/client.js"></script><think id="eab4b9f840753f8e7"></think>';
-    }
-
-    public function hello()
-    {
-        $info = Request::header();
-        $data=[
-            'id'=>1,
-            'name'=>22
-        ];
-        dump($info);
-      return  json($data)->code(201)->header(['Cache-control' => '1']);
-    }
-    public function jwt(){
-        $key = "2f5cdce3b2e1e98d421ab144fa03ad4c0f8d59020a0ec5ec9726a97d277fd23da1909d0475a302818c9bfb98f60dd146da452d9e003ba2746ede8edfbf97288f";  //这里是自定义的一个随机字串，应该写在config文件中的，解密时也会用，相当    于加密中常用的 盐  salt
-        $token = [
-            "member"=>[
-                "id"=>'a8c076a3-d910-4801-b887-30fdfb6ad1a5'
-            ],
-            "client"=>[
-                "id"=>"05522fa3-6002-4462-bcea-d36dcfda7e34",
-                "code"=>2,
-                "official"=>false
-            ],
-            "iat" => time(), //签发时间
-            "nbf" => time(), //在什么时候jwt开始生效  （这里表示生成100秒后才生效）
-            "exp" => time()+720000, //token 过期时间
-        ];
-        $jwt = JWT::encode($token,$key,"HS512"); //根据参数生成了 token
-        return json([
-            "token"=>$jwt
-        ]);
-    }
+    /**
+     * 文件目录
+     * @var string
+     */
+    private $folder="";
+    /**
+     * 文件名
+     * @var string
+     */
     private $getFilename="";
-    public function check(){
-        $jwt ="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJtZW1iZXIiOnsiaWQiOiJhOGMwNzZhMy1kOTEwLTQ4MDEtYjg4Ny0zMGZkZmI2YWQxYTUifSwiY2xpZW50Ijp7ImlkIjoiMDU1MjJmYTMtNjAwMi00NDYyLWJjZWEtZDM2ZGNmZGE3ZTM0IiwiY29kZSI6Miwib2ZmaWNpYWwiOmZhbHNlfSwiaWF0IjoxNTU3NzI5MDYwLCJuYmYiOjE1NTc3MjkwNjAsImV4cCI6MTU1NzczNjI2MH0.WoOk_DsqKnxQ7Mo4hnAS-nxpd4IWSq13z-9xRyApXzeDkpkMm5ABa3iN10pCDu_9bVn6hrcw6jOLLSv2omFy1Q";  //上一步中返回给用户的token
-        $key = "2f5cdce3b2e1e98d421ab144fa03ad4c0f8d59020a0ec5ec9726a97d277fd23da1909d0475a302818c9bfb98f60dd146da452d9e003ba2746ede8edfbf97288f";  //上一个方法中的 $key 本应该配置在 config文件中的
-        $info = JWT::decode($jwt,$key,["HS512"]); //解密jwt
-        return json($info);
-    }
-
     /**
      * 获取文件列表
+     * User: 陈大剩
      * @return \think\response\Json
      * @throws \think\db\exception\DataNotFoundException
      * @throws \think\db\exception\ModelNotFoundException
@@ -60,37 +27,30 @@ class Index extends Base
         $get=input('get.');
         if (!isset($get['folder']))$get['folder']="/";
         if (!isset($get['page']))$get['page']="1";
+        $get['folder']=$this->screen($get['folder']);
+        $foldersAry=$this->fileTree($get['folder'],0);
+        $this->folder=$get['folder'];
         $files=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder',$get['folder'])->limit(20)->page($get['page'])->select();
         $filesCount=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder',$get['folder'])->count();
         $countFiles=count($files);
-        if (empty($files)){
-            $foldersAry=$filesAll=[];
-//            $files=Db::table('data_files')->where('client_id',$tot->client->id)->where('member_id',$tot->member->id)->where('folder',$get['folder'])->limit(1)->page(1)->select();
-//            $folders=Db::table('file_folders')->where('member_id',$tot->member->id)->where('id',$files[0]['folder_id'])->find();
-//            $foldersAll=Db::table('file_folders')->where('member_id',$tot->member->id)->select();
-//            $foldersAry=getTree($foldersAll,$folders['id']);
-        }else{
-            $folders=Db::table('file_folders')->where('member_id',$this->member_id)->where('id',$files[0]['folder_id'])->find();
-            $foldersAll=Db::table('file_folders')->where('member_id',$this->member_id)->select();
-            $foldersAry=getTree($foldersAll,$folders['id']);
-            foreach ($files as $k =>$v){
-                $access_type=$v['access_type']==0?'private':'public';
-                $filesAll[]=[
-                    'id'=>$v['id'],
-                    'access_type'=>$access_type,
-                    'filename'=>$v['filename'],
-                    'size'=>$v['size'],
-                    'download_link'=>Config('env.oss_custom_host')."/".$access_type."/".$this->member_id."/".Config('env.app')."/".$v['id']."?".$v['download_url'],
-                    'thumbnail'=>"",
-                    'content_type'=>$v['content_type'],
-                    'folder'=>$v['folder'],
-                    'created_at'=>strtotime($v['created_at']),
-                    'updated_at'=>strtotime($v['updated_at']),
-                    'last_modified_time'=>$v['last_modified_time'],
-                    'is_deleted'=>empty($v['deleted_at'])?'false':'true',
-                    'mission_result'=>"",
-                ];
-            }
+        $filesAll=[];
+        foreach ($files as $k =>$v){
+            $access_type=$v['access_type']==0?'private':'public';
+            $filesAll[]=[
+                'id'=>$v['id'],
+                'access_type'=>$access_type,
+                'filename'=>$v['filename'],
+                'size'=>$v['size'],
+                'download_link'=>Config('env.oss_custom_host')."/".$access_type."/".$this->member_id."/".$this->client_name."/".$v['id']."?".$v['download_url'],
+                'thumbnail'=>"",
+                'content_type'=>$v['content_type'],
+                'folder'=>$v['folder'],
+                'created_at'=>strtotime($v['created_at']),
+                'updated_at'=>strtotime($v['updated_at']),
+                'last_modified_time'=>$v['last_modified_time'],
+                'is_deleted'=>empty($v['deleted_at'])?'false':'true',
+                'mission_result'=>"",
+            ];
         }
         $data=[
             'folder'=>$get['folder'],
@@ -104,19 +64,10 @@ class Index extends Base
             'files'=>$filesAll,
 
         ];
-         return show('17pdf', $code = "0,0",$msg ="",$errors = [],$data);
+        return show('17pdf', $code = "0,0",$msg ="",$errors = [],$data);
     }
-    public function testCheck(){
-        $get=input('get.');
-        $tot=check($get['jwt']);
-        dump($tot);
-    }
-    public function up()
-    {
-        return $this->fetch();
-    }
-
     public function upload(){
+        $post=input('post.');
         $file = request()->file('file');
         $info = $file->move('./uploads','');
         if ($info) {
@@ -125,18 +76,63 @@ class Index extends Base
             $this->getFilename=$info->getFilename();
             $fileName = $this->client_name ."/".guid();
             $resInfo=$this->uploadFile(Config('env.aliyun_oss.Bucket'), $fileName, $info->getPathname());
-//            Db::table('data_files')->where('member_id',$this->member_id)->where('client_id',$this->client_id)->where('etag',$resInfo['etag'])->
-            dump($resInfo);
-        } else {
+            list($download_head,$download_url)=explode("?",$resInfo['signedUrl']);
+            $findFiles=Db::table('data_files')
+                ->where('member_id',$this->member_id)
+                ->where('client_id',$this->client_id)
+                ->where('etag',$resInfo['etag'])
+                ->where('folder',"/")
+                ->where('suffix',$info->getExtension())
+                ->find();
+            $post['folder']="/up/up/up/up/test";
+            $post['folder'] =$this->screen($post['folder']);
+            $id=$this->directory($post['folder']);
+            if (count($findFiles)>=1){
+                echo 1;
+            }else{
+                $data=[
+                    'client_id'=>$this->client_id,
+                    'member_id'=>$this->member_id,
+                    'etag'=>$resInfo['etag'],
+                    'access_type'=>0,
+                    'filename'=>$info->getFilename(),
+                    'size'=>$resInfo['info']['size_upload'],
+                    'content_type'=>$resInfo['oss-requestheaders']['Content-Type'],
+                    'folder'=>$post['folder'],
+                    'download_url'=>$download_url,
+                    'created_at'=>date('Y-m-d H:i:s.u'),
+                    'updated_at'=>date('Y-m-d H:i:s.u'),
+                    'file'=>$fileName,
+                    'folder_id'=>$id,
+                    'last_modified_time'=>time(),
+                    'suffix'=> $info->getExtension(),
+                ];
+                Db::table('data_files')->insertGetId($data);
+            }
             // 上传失败获取错误信息
             echo $file->getError();
         }
     }
 
+    /**
+     * OSS实例
+     * User: 陈大剩
+     * @return \OSS\OssClient
+     */
     private function new_oss(){
-        $oss=new \OSS\OssClient(Config('env.aliyun_oss.KeyId'),Config('env.aliyun_oss.KeySecret'),Config('env.aliyun_oss.Endpoint'));
+        $oss=new \OSS\OssClient(Config('env.aliyun_oss.KeyId'),Config('env.aliyun_oss.KeySecret'),Config('env.aliyun_oss.Endpoint'),false);
         return $oss;
     }
+
+    /**
+     * 阿里云上传接口
+     * User: 陈大剩
+     * @param $bucket
+     * @param $object
+     * @param $Path
+     * @return null|\think\response\Json
+     * @throws \OSS\Core\OssException
+     */
     public function uploadFile($bucket,$object,$Path)
     {
         $options = array(
@@ -146,16 +142,144 @@ class Index extends Base
             ));
         try {
             $ossClient = $this->new_oss();
-            //uploadFile的上传方法
             $res = $ossClient->uploadFile($bucket, $object, $Path,$options);
+            $signedUrl = $ossClient->signUrl($bucket, $object, 3153600000);
+            $res['signedUrl'] = htmlspecialchars_decode($signedUrl);
             return $res;
         } catch (OssException $e) {
-            //如果出错这里返回报错信息
-            return $e->getMessage();
+            return errorMsg('101',$e->getMessage(),400);
         }
     }
-    public function uuid(){
-        dump($this->client_name);
+    /**
+     * 递归创建目录
+     * User: 陈大剩
+     * @param string $folder
+     * @param int $parent_id
+     * @return \think\response\Json|void
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     */
+    public function directory($folder="",$parent_id=0){
+        if (empty($folder)){
+            return $parent_id;
+        }
+        $folderAry=explode("/",$folder);
+        $fist=array_shift($folderAry);
+        $newdir=implode('/', $folderAry);
+        if (empty($fist)){
+            $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
+        }else{
+            $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('name',$fist)->where('parent_id',$parent_id)->find();
+        }
+        if (empty($fist)){
+            if (empty($findFolder)){
+                $data=[
+                    'id'=>guid(),
+                    'parent_id'=>0,
+                    'member_id'=>$this->member_id,
+                    'name'=>$this->member_id,
+                    'created_at'=>date('Y-m-d H:i:s.u'),
+                    'updated_at'=>date('Y-m-d H:i:s.u'),
+                ];
+                try{
+                    $res=Db::table('file_folders')->insertGetId($data);
+                    $this->directory($newdir,$data['id']);
+                }catch (OssException $e) {
+                    return show($this->client_name,"100.0",'',[$e->getMessage()],[],400);
+                }
+            }else{
+                return $this->directory($newdir,$findFolder['id']);
+            }
+        }else{
+            if (empty($findFolder)){
+                $data=[
+                    'id'=>guid(),
+                    'parent_id'=>$parent_id,
+                    'member_id'=>$this->member_id,
+                    'name'=>$fist,
+                    'created_at'=>date('Y-m-d H:i:s.u'),
+                    'updated_at'=>date('Y-m-d H:i:s.u'),
+                ];
+                try{
+                    $res=Db::table('file_folders')->insertGetId($data);
+                    $this->directory($newdir,$data['id']);
+                    if (end($folderAry)==""){
+                         return $data['id'];
+                    }
+                }catch (OssException $e) {
+                    return show($this->client_name,"100.0",'',[$e->getMessage()],[],400);
+                }
+            }else{
+                return $this->directory($newdir,$findFolder['id']);
+            }
+        }
     }
 
+    /**
+     * 递归获取文件夹
+     * User: 陈大剩
+     * @param string $folder
+     * @param int $parent_id
+     * @return array
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     */
+    public function fileTree($folder="/up",$parent_id=0){
+        $folderAry=explode("/",$folder);
+        $fist=array_shift($folderAry);
+        $newdir=implode('/', $folderAry);
+        if (empty($fist)){
+            $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
+        }else{
+            $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('name',$fist)->where('parent_id',$parent_id)->find();
+        }
+        if (empty($findFolder)){
+            return [];
+        }else{
+            if (count($folderAry)==0){
+                $data=Db::table('file_folders')->where('parent_id',$findFolder['id'])->where('member_id',$this->member_id)->select();
+                $tree = [];
+                foreach($data as $k => $v)
+                {
+                    $count=Db::table('data_files')->where('folder_id',$v['id'])->where('member_id',$this->member_id)->where('folder',$this->folder)->where('client_id',$this->client_id)->count();
+                    unset($v['parent_id']);
+                    unset($v['member_id']);
+                    unset($v['created_at']);
+                    unset($v['updated_at']);
+                    unset($v['deleted_at']);
+                    $v['files_count']=$count;
+                    $tree[] = $v;
+                }
+                return $tree;
+            }else{
+                return $this->fileTree($newdir,$findFolder['id']);
+            }
+        }
+    }
+
+    /**
+     * 去掉前后斜杠
+     * User: 陈大剩
+     * @param $str
+     * @return string
+     */
+    public function screen($str){
+        if (!empty($str)){
+            if ($str!=="/"){
+                $newFolder=explode("/",$str);
+                if (end($newFolder)==""){
+                    array_pop($newFolder);
+                    $str=implode("/",$newFolder);
+                }
+                if ($newFolder[0]!==""){
+                    $str="/".$str;
+                }
+            }
+        }else{
+            $str="/";
+        }
+        return $str;
+    }
 }

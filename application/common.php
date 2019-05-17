@@ -38,25 +38,6 @@ function errorMsg($status, $message,$httpCode=200) {
 
     return json($data, $httpCode);
 }
-function getTree($data, $pId,$folder='')
-{
-    $tree = [];
-    foreach($data as $k => $v)
-    {
-        if($v['parent_id'] === $pId) // 父亲找到儿子
-        {
-            $count=Db::table('data_files')->where('folder_id',$v['id'])->count();
-            unset($v['parent_id']);
-            unset($v['member_id']);
-            unset($v['created_at']);
-            unset($v['updated_at']);
-            unset($v['deleted_at']);
-            $v['files_count']=$count;
-            $tree[] = $v;
-        }
-    }
-    return $tree;
-}
 function guid(){
     if (function_exists('com_create_guid')){
         $delete_last = substr(com_create_guid(),0,-1);
