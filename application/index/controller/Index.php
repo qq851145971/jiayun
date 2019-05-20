@@ -3,6 +3,7 @@ namespace app\index\controller;
 use think\Db;
 use think\facade\Request;
 use think\Config;
+use app\common\controller\ApiException;
 class Index extends Base
 {
     /**
@@ -64,11 +65,29 @@ class Index extends Base
             'files'=>$filesAll,
 
         ];
-        return show('17pdf', $code = "0,0",$msg ="",$errors = [],$data);
+        return show($this->client_name, $code = "0,0",$msg ="",$errors = [],$data);
     }
+
+    /**
+     * 上传接口
+     * User: 陈大剩
+     * @return \think\response\Json
+     * @throws ApiException
+     * @throws \OSS\Core\OssException
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     */
     public function upload(){
         $post=input('post.');
         $file = request()->file('file');
+        if (empty($file)){
+            $errors=[
+                'type'=>'300,3',
+                'msg'=>"File is empty"
+            ];
+            return show($this->client_name,$errors['type'],$errors['msg'],$errors);
+        }
         $info = $file->move('./uploads','');
         if ($info) {
             $path = $info->getSaveName();
@@ -80,20 +99,21 @@ class Index extends Base
             $findFiles=Db::table('data_files')
                 ->where('member_id',$this->member_id)
                 ->where('client_id',$this->client_id)
-                ->where('etag',$resInfo['etag'])
+                ->where('etag',$this->etag($resInfo['etag']))
                 ->where('folder',"/")
                 ->where('suffix',$info->getExtension())
                 ->find();
-            $post['folder']="/up/up/up/up/test";
+            if (!isset($post['folder']))$post['folder']="";
             $post['folder'] =$this->screen($post['folder']);
             $id=$this->directory($post['folder']);
             if (count($findFiles)>=1){
-                echo 1;
+                throw new ApiException("文件夹中已有相同文件", 400);
             }else{
                 $data=[
+                    'id'=>guid(),
                     'client_id'=>$this->client_id,
                     'member_id'=>$this->member_id,
-                    'etag'=>$resInfo['etag'],
+                    'etag'=>$this->etag($resInfo['etag']),
                     'access_type'=>0,
                     'filename'=>$info->getFilename(),
                     'size'=>$resInfo['info']['size_upload'],
@@ -107,10 +127,31 @@ class Index extends Base
                     'last_modified_time'=>time(),
                     'suffix'=> $info->getExtension(),
                 ];
-                Db::table('data_files')->insertGetId($data);
+                    $res= Db::table('data_files')->insertGetId($data);
+                    if ($res){
+                        $access_type=$data['access_type']==0?'private':'public';
+                        $filesAll[]=[
+                            'id'=>$data['id'],
+                            'access_type'=>$access_type,
+                            'filename'=>$data['filename'],
+                            'size'=>$data['size'],
+                            'download_link'=>Config('env.oss_custom_host')."/".$access_type."/".$this->member_id."/".$this->client_name."/".$data['id']."?".$data['download_url'],
+                            'thumbnail'=>"",
+                            'content_type'=>$data['content_type'],
+                            'folder'=>$data['folder'],
+                            'created_at'=>strtotime($data['created_at']),
+                            'updated_at'=>strtotime($data['updated_at']),
+                            'last_modified_time'=>$data['last_modified_time'],
+                            'is_deleted'=>empty($data['deleted_at'])?'false':'true',
+                            'mission_result'=>"",
+                        ];
+                        return show($this->client_name, $code = "0,0",$msg ="",$errors = [],$filesAll);
+                    }
+
             }
             // 上传失败获取错误信息
-            echo $file->getError();
+        }else{
+            throw new ApiException($file->getError(), 400);
         }
     }
 
@@ -281,5 +322,16 @@ class Index extends Base
             $str="/";
         }
         return $str;
+    }
+
+    /**
+     * etag格式化
+     * User: 陈大剩
+     * @param $etag
+     * @return mixed
+     */
+    public function etag($etag){
+        $data=explode("\"",$etag);
+        return $data[1];
     }
 }
