@@ -38,6 +38,16 @@ function errorMsg($status, $message,$httpCode=200) {
 
     return json($data, $httpCode);
 }
+
+/**
+ * 获取十三位时间戳
+ * User: 陈大剩
+ * @return string
+ */
+function get13TimeStamp() {
+    list($t1, $t2) = explode(' ', microtime());
+    return $t2 . ceil($t1 * 1000);
+}
 function guid(){
     if (function_exists('com_create_guid')){
         $delete_last = substr(com_create_guid(),0,-1);
