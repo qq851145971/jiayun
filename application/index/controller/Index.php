@@ -69,18 +69,98 @@ class Index extends Base
     }
 
     /**
-     * 上传接口
+     *
      * User: 陈大剩
      * @return \think\response\Json
      * @throws ApiException
      * @throws \OSS\Core\OssException
+     * @throws \think\Exception
      * @throws \think\db\exception\DataNotFoundException
      * @throws \think\db\exception\ModelNotFoundException
      * @throws \think\exception\DbException
+     * @throws \think\exception\PDOException
      */
     public function upload(){
         $post=input('post.');
+        if (!isset($post['modify_time'])){
+                $last_modified_time=get13TimeStamp();
+        }else{
+            $last_modified_time=is_numeric($post['modify_time'])?$post['modify_time']:get13TimeStamp();
+        }
+        if (isset($post['target_app'])){
+            $appName=Db::table('clients')->where('code',$post['target_app'])->find();
+            if (empty($appName)){
+                $errors=[
+                    'type'=>'100,2',
+                    'msg'=>"Invalid client"
+                ];
+                return show("null",$errors['type'],$errors['msg'],$errors);
+            }
+        }
+        if (!isset($post['folder']))$post['folder']="";
+        $post['folder'] =$this->screen($post['folder']);
         $file = request()->file('file');
+        if (isset($post['uuid']) && empty($file)){
+            $fileName = $this->client_name ."/".$post['uuid'];
+            if (isset($post['target_app'])){
+                $toFileName=$post['target_app'] ."/".$post['uuid'];
+                $client_id=$appName['id'];
+            }else{
+                $client_id=$this->client_id;
+                $toFileName=$fileName;
+            }
+            $oneFiles=Db::table('data_files')->where('id',$post['uuid'])->find();
+            if (isset($post['filename'])){
+                $name=$post['filename'];
+            }else{
+                $name=$oneFiles['filename'];
+            }
+            $id=$this->directory($post['folder']);
+            if (isset($post['modify_time'])){
+                $edit=[
+                    'folder'=>$post['folder'],
+                    'folder_id'=>$id,
+                    'client_id'=>$client_id,
+                    'last_modified_time'=>$post['modify_time']
+                ];
+            }else{
+                $edit=[
+                    'folder'=>$post['folder'],
+                    'folder_id'=>$id,
+                    'client_id'=>$client_id,
+                ];
+            }
+            if (isset($post['filename']) || isset($post['target_app'])){
+                $this->editObject(Config('env.aliyun_oss.Bucket'),$fileName,Config('env.aliyun_oss.Bucket'),$toFileName,$name,$oneFiles['content_type']);
+            }
+                $resFiles=Db::table('data_files')->where('id',$post['uuid'])->update($edit);
+            if ($resFiles){
+                $access_type=$oneFiles['access_type']==0?'private':'public';
+                $resAll[]=[
+                    'id'=>$oneFiles['id'],
+                    'access_type'=>$access_type,
+                    'filename'=>$name,
+                    'size'=>$oneFiles['size'],
+                    'download_link'=>Config('env.oss_custom_host')."/".$access_type."/".$this->member_id."/".$this->client_name."/".$oneFiles['id']."?".$oneFiles['download_url'],
+                    'thumbnail'=>"",
+                    'content_type'=>$oneFiles['content_type'],
+                    'folder'=>$post['folder'],
+                    'created_at'=>strtotime($oneFiles['created_at']),
+                    'updated_at'=>strtotime($oneFiles['updated_at']),
+                    'last_modified_time'=>$oneFiles['last_modified_time'],
+                    'is_deleted'=>empty($oneFiles['deleted_at'])?'false':'true',
+                    'mission_result'=>"",
+                ];
+                return show($this->client_name, $code = "0,0",$msg ="",$errors = [],$resAll);
+            }else{
+                throw new ApiException("Internal Server Error",500);
+            }
+        }else{
+            return "b";
+        }
+        if (isset($post['target_app'])){
+            $this->client_name=$post['target_app'];
+        }
         if (empty($file)){
             $errors=[
                 'type'=>'300,3',
@@ -90,10 +170,12 @@ class Index extends Base
         }
         $info = $file->move('./uploads','');
         if ($info) {
-            $path = $info->getSaveName();
-            $filepath = 'http://localhost/kd/public/uploads/'.$info->getSaveName();
+            $uuid=guid();
             $this->getFilename=$info->getFilename();
-            $fileName = $this->client_name ."/".guid();
+            if (isset($post['filename'])){
+                $this->getFilename=$post['filename'];
+            }
+            $fileName = $this->client_name ."/".$uuid;
             $resInfo=$this->uploadFile(Config('env.aliyun_oss.Bucket'), $fileName, $info->getPathname());
             list($download_head,$download_url)=explode("?",$resInfo['signedUrl']);
             $findFiles=Db::table('data_files')
@@ -103,19 +185,20 @@ class Index extends Base
                 ->where('folder',"/")
                 ->where('suffix',$info->getExtension())
                 ->find();
-            if (!isset($post['folder']))$post['folder']="";
-            $post['folder'] =$this->screen($post['folder']);
             $id=$this->directory($post['folder']);
+            if (empty($id)){
+                throw new ApiException("Internal Server Error",500);
+            }
             if (count($findFiles)>=1){
                 throw new ApiException("文件夹中已有相同文件", 400);
             }else{
                 $data=[
-                    'id'=>guid(),
+                    'id'=>$uuid,
                     'client_id'=>$this->client_id,
                     'member_id'=>$this->member_id,
                     'etag'=>$this->etag($resInfo['etag']),
                     'access_type'=>0,
-                    'filename'=>$info->getFilename(),
+                    'filename'=>$this->getFilename,
                     'size'=>$resInfo['info']['size_upload'],
                     'content_type'=>$resInfo['oss-requestheaders']['Content-Type'],
                     'folder'=>$post['folder'],
@@ -124,10 +207,10 @@ class Index extends Base
                     'updated_at'=>date('Y-m-d H:i:s.u'),
                     'file'=>$fileName,
                     'folder_id'=>$id,
-                    'last_modified_time'=>time(),
+                    'last_modified_time'=>$last_modified_time,
                     'suffix'=> $info->getExtension(),
                 ];
-                    $res= Db::table('data_files')->insertGetId($data);
+                    $res= Db::table('data_files')->insert($data);
                     if ($res){
                         $access_type=$data['access_type']==0?'private':'public';
                         $filesAll[]=[
@@ -147,7 +230,6 @@ class Index extends Base
                         ];
                         return show($this->client_name, $code = "0,0",$msg ="",$errors = [],$filesAll);
                     }
-
             }
             // 上传失败获取错误信息
         }else{
@@ -165,6 +247,32 @@ class Index extends Base
         return $oss;
     }
 
+    /**
+     * 修改文件接口
+     * User: 陈大剩
+     * @param $fromBucket
+     * @param $fromObject
+     * @param $toBucket
+     * @param $toObject
+     * @param $name
+     * @param $Type
+     * @return string|\think\response\Json
+     * @throws \OSS\Core\OssException
+     */
+    public function editObject($fromBucket, $fromObject, $toBucket, $toObject, $name,$Type){
+        $options = array(
+            'headers' => array(
+                'Content-Type' => $Type,
+                'Content-Disposition' => 'attachment; filename="'.$name.'"'
+            ));
+        try {
+            $ossClient = $this->new_oss();
+            $res = $ossClient->copyObject($fromBucket, $fromObject, $toBucket, $toObject, $options);
+            if ($res)return "1";
+        } catch (OssException $e) {
+            return errorMsg('101',$e->getMessage(),400);
+        }
+    }
     /**
      * 阿里云上传接口
      * User: 陈大剩
@@ -284,13 +392,14 @@ class Index extends Base
                 $tree = [];
                 foreach($data as $k => $v)
                 {
-                    $count=Db::table('data_files')->where('folder_id',$v['id'])->where('member_id',$this->member_id)->where('folder',$this->folder)->where('client_id',$this->client_id)->count();
+                    $count=Db::table('data_files')->where('folder_id',$v['id'])->where('member_id',$this->member_id)->where('client_id',$this->client_id)->count();
+                    $countWj=Db::table('file_folders')->where('parent_id',$v['id'])->where('member_id',$this->member_id)->count();
                     unset($v['parent_id']);
                     unset($v['member_id']);
                     unset($v['created_at']);
                     unset($v['updated_at']);
                     unset($v['deleted_at']);
-                    $v['files_count']=$count;
+                    $v['files_count']=intval($count)+intval($countWj);
                     $tree[] = $v;
                 }
                 return $tree;
