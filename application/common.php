@@ -9,14 +9,30 @@
 // | Author: 流年 <liu21st@gmail.com>
 // +----------------------------------------------------------------------
 use \Firebase\JWT\JWT;
-use think\Db;
 // 应用公共文件
-
+/**
+ * 解密jwt
+ * User: 陈大剩
+ * @param $jwt
+ * @return object
+ */
 function check($jwt){
     $key = "2f5cdce3b2e1e98d421ab144fa03ad4c0f8d59020a0ec5ec9726a97d277fd23da1909d0475a302818c9bfb98f60dd146da452d9e003ba2746ede8edfbf97288f";
     $info = JWT::decode($jwt,$key,["HS512"]); //解密jwt
     return $info;
 }
+
+/**
+ * 统一格式输出
+ * User: 陈大剩
+ * @param $target_app
+ * @param string $code
+ * @param string $msg
+ * @param array $errors
+ * @param array $data
+ * @param int $httpCode
+ * @return \think\response\Json
+ */
 function show($target_app, $code = "0,0",$msg ="",$errors = [],$data=[] , $httpCode=200) {
 
     $data = [
@@ -29,6 +45,15 @@ function show($target_app, $code = "0,0",$msg ="",$errors = [],$data=[] , $httpC
 
     return json($data, $httpCode);
 }
+
+/**
+ * 失败格式输出
+ * User: 陈大剩
+ * @param $status
+ * @param $message
+ * @param int $httpCode
+ * @return \think\response\Json
+ */
 function errorMsg($status, $message,$httpCode=200) {
 
     $data = [
@@ -48,6 +73,12 @@ function get13TimeStamp() {
     list($t1, $t2) = explode(' ', microtime());
     return $t2 . ceil($t1 * 1000);
 }
+
+/**
+ * 获取uuid
+ * User: 陈大剩
+ * @return string
+ */
 function guid(){
     if (function_exists('com_create_guid')){
         $delete_last = substr(com_create_guid(),0,-1);
