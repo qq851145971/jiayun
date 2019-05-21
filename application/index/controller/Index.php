@@ -156,61 +156,68 @@ class Index extends Base
                 throw new ApiException("Internal Server Error",500);
             }
         }else{
-            return "b";
-        }
-        if (isset($post['target_app'])){
-            $this->client_name=$post['target_app'];
-        }
-        if (empty($file)){
-            $errors=[
-                'type'=>'300,3',
-                'msg'=>"File is empty"
-            ];
-            return show($this->client_name,$errors['type'],$errors['msg'],$errors);
-        }
-        $info = $file->move('./uploads','');
-        if ($info) {
-            $uuid=guid();
-            $this->getFilename=$info->getFilename();
-            if (isset($post['filename'])){
-                $this->getFilename=$post['filename'];
+            if (isset($post['target_app'])){
+                $this->client_name=$post['target_app'];
             }
-            $fileName = $this->client_name ."/".$uuid;
-            $resInfo=$this->uploadFile(Config('env.aliyun_oss.Bucket'), $fileName, $info->getPathname());
-            list($download_head,$download_url)=explode("?",$resInfo['signedUrl']);
-            $findFiles=Db::table('data_files')
-                ->where('member_id',$this->member_id)
-                ->where('client_id',$this->client_id)
-                ->where('etag',$this->etag($resInfo['etag']))
-                ->where('folder',"/")
-                ->where('suffix',$info->getExtension())
-                ->find();
-            $id=$this->directory($post['folder']);
-            if (empty($id)){
-                throw new ApiException("Internal Server Error",500);
-            }
-            if (count($findFiles)>=1){
-                throw new ApiException("文件夹中已有相同文件", 400);
-            }else{
-                $data=[
-                    'id'=>$uuid,
-                    'client_id'=>$this->client_id,
-                    'member_id'=>$this->member_id,
-                    'etag'=>$this->etag($resInfo['etag']),
-                    'access_type'=>0,
-                    'filename'=>$this->getFilename,
-                    'size'=>$resInfo['info']['size_upload'],
-                    'content_type'=>$resInfo['oss-requestheaders']['Content-Type'],
-                    'folder'=>$post['folder'],
-                    'download_url'=>$download_url,
-                    'created_at'=>date('Y-m-d H:i:s.u'),
-                    'updated_at'=>date('Y-m-d H:i:s.u'),
-                    'file'=>$fileName,
-                    'folder_id'=>$id,
-                    'last_modified_time'=>$last_modified_time,
-                    'suffix'=> $info->getExtension(),
+            if (empty($file)){
+                $errors=[
+                    'type'=>'300,3',
+                    'msg'=>"File is empty"
                 ];
-                    $res= Db::table('data_files')->insert($data);
+                return show($this->client_name,$errors['type'],$errors['msg'],$errors);
+            }
+            $info = $file->move('./uploads','');
+            if ($info) {
+                if (isset($post['uuid'])){
+                    $uuid=$post['uuid'];
+                }else{
+                    $uuid=guid();
+                }
+
+                $this->getFilename=$info->getFilename();
+                if (isset($post['filename'])){
+                    $this->getFilename=$post['filename'];
+                }
+                $fileName = $this->client_name ."/".$uuid;
+                $resInfo=$this->uploadFile(Config('env.aliyun_oss.Bucket'), $fileName, $info->getPathname());
+                list($download_head,$download_url)=explode("?",$resInfo['signedUrl']);
+                $findFiles=Db::table('data_files')
+                    ->where('member_id',$this->member_id)
+                    ->where('client_id',$this->client_id)
+                    ->where('etag',$this->etag($resInfo['etag']))
+                    ->where('folder',"/")
+                    ->where('suffix',$info->getExtension())
+                    ->find();
+                $id=$this->directory($post['folder']);
+                if (empty($id)){
+                    throw new ApiException("Internal Server Error",500);
+                }
+                if (count($findFiles)>=1){
+                    throw new ApiException("文件夹中已有相同文件", 400);
+                }else{
+                    $data=[
+                        'id'=>$uuid,
+                        'client_id'=>$this->client_id,
+                        'member_id'=>$this->member_id,
+                        'etag'=>$this->etag($resInfo['etag']),
+                        'access_type'=>0,
+                        'filename'=>$this->getFilename,
+                        'size'=>$resInfo['info']['size_upload'],
+                        'content_type'=>$resInfo['oss-requestheaders']['Content-Type'],
+                        'folder'=>$post['folder'],
+                        'download_url'=>$download_url,
+                        'created_at'=>date('Y-m-d H:i:s.u'),
+                        'updated_at'=>date('Y-m-d H:i:s.u'),
+                        'file'=>$fileName,
+                        'folder_id'=>$id,
+                        'last_modified_time'=>$last_modified_time,
+                        'suffix'=> $info->getExtension(),
+                    ];
+                    if (isset($post['uuid'])){
+                        $res= Db::table('data_files')->where('id',$uuid)->update($data);
+                    }else{
+                        $res= Db::table('data_files')->insert($data);
+                    }
                     if ($res){
                         $access_type=$data['access_type']==0?'private':'public';
                         $filesAll[]=[
@@ -230,10 +237,11 @@ class Index extends Base
                         ];
                         return show($this->client_name, $code = "0,0",$msg ="",$errors = [],$filesAll);
                     }
+                }
+                // 上传失败获取错误信息
+            }else{
+                throw new ApiException($file->getError(), 400);
             }
-            // 上传失败获取错误信息
-        }else{
-            throw new ApiException($file->getError(), 400);
         }
     }
 
