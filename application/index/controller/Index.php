@@ -1,7 +1,7 @@
 <?php
 namespace app\index\controller;
 use think\Db;
-use think\Config;
+
 use app\common\controller\ApiException;
 class Index extends Base
 {
@@ -27,10 +27,24 @@ class Index extends Base
         $get=input('get.');
         if (!isset($get['folder']))$get['folder']="/";
         if (!isset($get['page']))$get['page']="1";
+        if (!isset($get['per']))$get['per']="20";
         $get['folder']=$this->screen($get['folder']);
         $foldersAry=$this->fileTree($get['folder'],0);
         $this->folder=$get['folder'];
-        $files=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder',$get['folder'])->limit(20)->page($get['page'])->select();
+        $where=$statistic_folders=[];
+        if (isset($get['last_refresh_time'])) {
+            if (strlen($get['last_refresh_time'])<10)  throw new ApiException("请传入有效时间戳",500);
+            $where[]=["updated_at",">=",date("Y-h-d H:i:s",$get['last_refresh_time'])];
+        }
+        if (isset($get['statistic_folders'])){
+            $get['statistic_folders']=intval($get['statistic_folders']);
+        }
+        foreach ($foldersAry as $k=>$v){
+            if ($v['name']=='Converted'){
+                $statistic_folders[]=$v;
+            }
+        }
+        $files=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder',$get['folder'])->where($where)->limit($get['per'])->page($get['page'])->select();
         $filesCount=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder',$get['folder'])->count();
         $countFiles=count($files);
         $filesAll=[];
@@ -52,18 +66,41 @@ class Index extends Base
                 'mission_result'=>"",
             ];
         }
-        $data=[
-            'folder'=>$get['folder'],
-            'sub_folders'=>$foldersAry,
-            'page'=>[
-                'current_page'=>$get['page'],
-                'page_size'=>20,
-                'total_pages'=>$filesCount,
-                'total'=>$countFiles
-            ],
-            'files'=>$filesAll,
 
-        ];
+
+        if ($get['statistic_folders']==1 && $get['folder']="/"){
+            $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
+            $statistic_folders[]=[
+              'id'=>$findFolder['id'],
+                'name'=>"home",
+                'files_count'=>$filesCount+count($filesAll)
+            ];
+            $data=[
+                'folder'=>$get['folder'],
+                'sub_folders'=>$foldersAry,
+                'statistic_folders'=>$statistic_folders,
+                'page'=>[
+                    'current_page'=>$get['page'],
+                    'page_size'=>$get['per'],
+                    'total_pages'=>ceil($filesCount/$get['per']),
+                    'total'=>$countFiles
+                ],
+                'files'=>$filesAll,
+            ];
+        }else{
+            $data=[
+                'folder'=>$get['folder'],
+                'sub_folders'=>$foldersAry,
+                'page'=>[
+                    'current_page'=>$get['page'],
+                    'page_size'=>$get['per'],
+                    'total_pages'=>$filesCount,
+                    'total'=>$countFiles
+                ],
+                'files'=>$filesAll,
+            ];
+        }
+
         return show($this->client_name, $code = "0,0",$msg ="",$errors = [],$data);
     }
 
