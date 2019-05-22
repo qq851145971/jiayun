@@ -1,7 +1,6 @@
 <?php
 namespace app\index\controller;
 use think\Db;
-use think\facade\Request;
 use think\Config;
 use app\common\controller\ApiException;
 class Index extends Base
@@ -69,7 +68,7 @@ class Index extends Base
     }
 
     /**
-     *
+     * 上传接口v1
      * User: 陈大剩
      * @return \think\response\Json
      * @throws ApiException
@@ -99,7 +98,26 @@ class Index extends Base
         }
         if (!isset($post['folder']))$post['folder']="";
         $post['folder'] =$this->screen($post['folder']);
-        $file = request()->file('file');
+        if (isset($post['remote_url'])){
+            $file=get_files($post['remote_url']);
+            if ($file){
+                $getExtension=substr(strrchr($file, '.'), 1);
+                $getPathname='./'.$file;
+                $info=explode(DS,$file);
+                $getFilename=$info[1];
+            }else{
+                if (empty($file)){
+                    $errors=[
+                        'type'=>'300,3',
+                        'msg'=>"Remote_url is empty"
+                    ];
+                    return show($this->client_name,$errors['type'],$errors['msg'],$errors);
+                }
+            }
+        }else{
+            $file = request()->file('file');
+            $info = $file->move('./uploads','');
+        }
         if (isset($post['uuid']) && empty($file)){
             $fileName = $this->client_name ."/".$post['uuid'];
             if (isset($post['target_app'])){
@@ -166,27 +184,31 @@ class Index extends Base
                 ];
                 return show($this->client_name,$errors['type'],$errors['msg'],$errors);
             }
-            $info = $file->move('./uploads','');
             if ($info) {
+                if (count($info)!==2){
+                    $getFilename=$info->getFilename();
+                    $getPathname=$info->getPathname();
+                    $getExtension=$info->getExtension();
+                }
                 if (isset($post['uuid'])){
                     $uuid=$post['uuid'];
                 }else{
                     $uuid=guid();
                 }
 
-                $this->getFilename=$info->getFilename();
+                $this->getFilename=$getFilename;
                 if (isset($post['filename'])){
                     $this->getFilename=$post['filename'];
                 }
                 $fileName = $this->client_name ."/".$uuid;
-                $resInfo=$this->uploadFile(Config('env.aliyun_oss.Bucket'), $fileName, $info->getPathname());
+                $resInfo=$this->uploadFile(Config('env.aliyun_oss.Bucket'), $fileName, $getPathname);
                 list($download_head,$download_url)=explode("?",$resInfo['signedUrl']);
                 $findFiles=Db::table('data_files')
                     ->where('member_id',$this->member_id)
                     ->where('client_id',$this->client_id)
                     ->where('etag',$this->etag($resInfo['etag']))
                     ->where('folder',"/")
-                    ->where('suffix',$info->getExtension())
+                    ->where('suffix',$getExtension)
                     ->find();
                 $id=$this->directory($post['folder']);
                 if (empty($id)){
@@ -211,7 +233,7 @@ class Index extends Base
                         'file'=>$fileName,
                         'folder_id'=>$id,
                         'last_modified_time'=>$last_modified_time,
-                        'suffix'=> $info->getExtension(),
+                        'suffix'=> $getExtension,
                     ];
                     if (isset($post['uuid'])){
                         $res= Db::table('data_files')->where('id',$uuid)->update($data);
@@ -416,7 +438,6 @@ class Index extends Base
             }
         }
     }
-
     /**
      * 去掉前后斜杠
      * User: 陈大剩

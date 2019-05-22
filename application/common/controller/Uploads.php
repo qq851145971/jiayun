@@ -14,10 +14,11 @@ class Uploads extends File
     //下载地址
     private $url = '';
     private $path = '';
-    /**
-     *
-     * @param string  $url  图片地址
-     * @param boolean $replace 是否覆盖
+    /** 初始化
+     * Uploads constructor.
+     * @param $url 图片地址
+     * @param bool $replace 是否覆盖
+     * @throws ApiException
      */
     function __construct($url, $replace = false) {
         $path = Env::get('root_path') . 'public' . DS;
@@ -57,7 +58,7 @@ class Uploads extends File
                     }
                 }
             }
-            $filename = $path . 'uploads' . DS .  DS . md5($this->url) . '.' . $ext;
+            $filename = $path . 'uploads' . DS .  DS . md5($this->url).rand(1,1000) . '.' . $ext;
             if (!is_file($filename) || $replace) {
                 if (http_down($this->url, $filename) === false) {
                     $this->error = '下载文件失败';

@@ -10,6 +10,7 @@
 // +----------------------------------------------------------------------
 use \Firebase\JWT\JWT;
 use app\common\controller\ApiException;
+use app\common\controller\Uploads;
 // 应用公共文件
 /**
  * 解密jwt
@@ -171,4 +172,16 @@ function get_head($url) {
     return $header;
 }
 
+function get_files($files){
+    if(strpos($files, '://') === false){
+        $files = Env::get('root_path').'public'.DS.'static'.DS.'index'.DS.'images'.DS.$files;
+        if(!is_file($files)){
+            $files = false;
+        }
+    } else {
+        $file = new Uploads($files);
+        $files = $file->getFileName();
+    }
+    return $files;
+}
 
