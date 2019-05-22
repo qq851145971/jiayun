@@ -11,7 +11,9 @@
 
 // [ 应用入口文件 ]
 namespace think;
-
+if (!defined('DS')) {
+    define('DS', DIRECTORY_SEPARATOR);
+}
 // 加载基础文件
 require __DIR__ . '/../thinkphp/base.php';
 
