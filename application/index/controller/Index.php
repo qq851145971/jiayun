@@ -207,6 +207,8 @@ class Index extends Base
                     'is_deleted'=>empty($oneFiles['deleted_at'])?'false':'true',
                     'mission_result'=>"",
                 ];
+                $count=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->sum('size');
+                Db::table('members')->where('id',$this->member_id)->data(['used_space' => $count])->update();
                 return show($this->client_name, $code = "0,0",$msg ="",$errors = [],$resAll);
             }else{
                 throw new ApiException("Internal Server Error",500);
@@ -295,6 +297,13 @@ class Index extends Base
                             'is_deleted'=>empty($data['deleted_at'])?'false':'true',
                             'mission_result'=>"",
                         ];
+                        try{
+                            $count=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->sum('size');
+                            Db::table('members')->where('id',$this->member_id)->data(['used_space' => $count])->update();
+                        }catch (Exception $e){
+
+                        }
+
                         return show($this->client_name, $code = "0,0",$msg ="",$errors = [],$filesAll);
                     }
                 }
@@ -506,7 +515,6 @@ class Index extends Base
         $data=explode("\"",$etag);
         return $data[1];
     }
-
     /**
      * 文件详情
      * User: 陈大剩
@@ -549,5 +557,12 @@ class Index extends Base
         }
 
         return show($this->client_name, $code = "0,0",$msg ="",[],$resAll);
+    }
+    public function me(){
+        $used_space=Db::table('members')->where('id',$this->member_id)->field('used_space')->find();
+        $data=[
+            'used_space'=>$used_space['used_space']
+        ];
+        return show($this->client_name, $code = "0,0",$msg ="",[],$data);
     }
 }

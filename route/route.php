@@ -18,6 +18,7 @@ Route::group('files', function () {
     Route::get('', 'index/index/files');
     Route::post('', 'index/index/upload');
 })->pattern(['id' => '\\w{8}(-\\w{4}){3}-\\w{12}?']);
+Route::get('me', 'index/index/me');
 return [
 
 ];
