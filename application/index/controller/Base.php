@@ -12,7 +12,6 @@ use think\Controller;
 use app\common\controller\ApiException;
 use think\Config;
 use think\Db;
-use app\index\controller\Auth;
 use \Firebase\JWT\JWT;
 class Base extends Controller
 {
@@ -76,5 +75,12 @@ class Base extends Controller
         return json([
             "token"=>$jwt
         ]);
+    }
+    /**
+     * 空方法
+     */
+    public function _empty()
+    {
+        throw new ApiException('empty method!', 404);
     }
 }

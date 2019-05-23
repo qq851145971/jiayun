@@ -13,9 +13,11 @@ Route::get('think', function () {
     return 'hello,ThinkPHP5!';
 });
 
-Route::get('hello/:name', 'index/hello');
-Route::get('testCheck', 'index/index/testCheck');
-Route::get('files', 'index/index/files');
+Route::group('files', function () {
+    Route::get(':id', 'index/index/filesInfo');
+    Route::get('', 'index/index/files');
+    Route::post('', 'index/index/upload');
+})->pattern(['id' => '\\w{8}(-\\w{4}){3}-\\w{12}?']);
 return [
 
 ];

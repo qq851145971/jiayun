@@ -66,27 +66,28 @@ class Index extends Base
                 'mission_result'=>"",
             ];
         }
-
-
-        if ($get['statistic_folders']==1 && $get['folder']="/"){
-            $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
-            $statistic_folders[]=[
-              'id'=>$findFolder['id'],
-                'name'=>"home",
-                'files_count'=>$filesCount+count($filesAll)
-            ];
-            $data=[
-                'folder'=>$get['folder'],
-                'sub_folders'=>$foldersAry,
-                'statistic_folders'=>$statistic_folders,
-                'page'=>[
-                    'current_page'=>$get['page'],
-                    'page_size'=>$get['per'],
-                    'total_pages'=>ceil($filesCount/$get['per']),
-                    'total'=>$countFiles
-                ],
-                'files'=>$filesAll,
-            ];
+        if (isset($get['statistic_folders'])){
+            $get['statistic_folders']=intval($get['statistic_folders']);
+            if ($get['statistic_folders']==1 && $get['folder']="/"){
+                $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
+                $statistic_folders[]=[
+                    'id'=>$findFolder['id'],
+                    'name'=>"home",
+                    'files_count'=>$filesCount+count($filesAll)
+                ];
+                $data=[
+                    'folder'=>$get['folder'],
+                    'sub_folders'=>$foldersAry,
+                    'statistic_folders'=>$statistic_folders,
+                    'page'=>[
+                        'current_page'=>$get['page'],
+                        'page_size'=>$get['per'],
+                        'total_pages'=>ceil($filesCount/$get['per']),
+                        'total'=>$countFiles
+                    ],
+                    'files'=>$filesAll,
+                ];
+            }
         }else{
             $data=[
                 'folder'=>$get['folder'],
@@ -100,10 +101,8 @@ class Index extends Base
                 'files'=>$filesAll,
             ];
         }
-
         return show($this->client_name, $code = "0,0",$msg ="",$errors = [],$data);
     }
-
     /**
      * 上传接口v1
      * User: 陈大剩
@@ -153,7 +152,9 @@ class Index extends Base
             }
         }else{
             $file = request()->file('file');
-            $info = $file->move('./uploads','');
+            if (!empty($file)){
+                $info = $file->move('./uploads','');
+            }
         }
         if (isset($post['uuid']) && empty($file)){
             $fileName = $this->client_name ."/".$post['uuid'];
@@ -249,7 +250,7 @@ class Index extends Base
                     ->find();
                 $id=$this->directory($post['folder']);
                 if (empty($id)){
-                    throw new ApiException("Internal Server Error",500);
+                    throw new ApiException("Internal Server MyError",500);
                 }
                 if (count($findFiles)>=1){
                     throw new ApiException("文件夹中已有相同文件", 400);
@@ -303,7 +304,6 @@ class Index extends Base
             }
         }
     }
-
     /**
      * OSS实例
      * User: 陈大剩
@@ -313,7 +313,6 @@ class Index extends Base
         $oss=new \OSS\OssClient(Config('env.aliyun_oss.KeyId'),Config('env.aliyun_oss.KeySecret'),Config('env.aliyun_oss.Endpoint'),false);
         return $oss;
     }
-
     /**
      * 修改文件接口
      * User: 陈大剩
@@ -431,7 +430,6 @@ class Index extends Base
             }
         }
     }
-
     /**
      * 递归获取文件夹
      * User: 陈大剩
@@ -498,7 +496,6 @@ class Index extends Base
         }
         return $str;
     }
-
     /**
      * etag格式化
      * User: 陈大剩
@@ -508,5 +505,49 @@ class Index extends Base
     public function etag($etag){
         $data=explode("\"",$etag);
         return $data[1];
+    }
+
+    /**
+     * 文件详情
+     * User: 陈大剩
+     * @param $id
+     * @return \think\response\Json
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     */
+    public function filesInfo($id){
+        try{
+            $files=Db::table('data_files')->where('id',$id)->find();
+        }catch (Exception $e){
+            return errorMsg('101',$e->getMessage(),400);
+        }
+        $resAll=$errors=[];
+        if (empty($files)){
+            $errors=[
+                'type'=>'300,0',
+                'msg'=>"DataFile Not Exists"
+            ];
+            return show($this->client_name,$errors['type'],$errors['msg'],$errors);
+        }else{
+            $access_type=$files['access_type']==0?'private':'public';
+            $resAll=[
+                'id'=>$files['id'],
+                'access_type'=>$access_type,
+                'filename'=>$files['filename'],
+                'size'=>$files['size'],
+                'download_link'=>Config('env.oss_custom_host')."/".$access_type."/".$this->member_id."/".$this->client_name."/".$files['id']."?".$files['download_url'],
+                'thumbnail'=>"",
+                'content_type'=>$files['content_type'],
+                'folder'=>$files['folder'],
+                'created_at'=>strtotime($files['created_at']),
+                'updated_at'=>strtotime($files['updated_at']),
+                'last_modified_time'=>$files['last_modified_time'],
+                'is_deleted'=>empty($files['deleted_at'])?'false':'true',
+                'mission_result'=>"",
+            ];
+        }
+
+        return show($this->client_name, $code = "0,0",$msg ="",[],$resAll);
     }
 }

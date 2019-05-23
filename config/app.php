@@ -66,7 +66,7 @@ return [
     // 默认的空模块名
     'empty_module'           => '',
     // 默认的空控制器名
-    'empty_controller'       => 'Error',
+    'empty_controller'       => 'MyError',
     // 操作方法前缀
     'use_action_prefix'      => false,
     // 操作方法后缀
