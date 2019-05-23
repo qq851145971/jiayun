@@ -1,5 +1,6 @@
 <?php
 namespace app\index\controller;
+use think\Config;
 use think\Db;
 
 use app\common\controller\ApiException;
@@ -15,6 +16,8 @@ class Index extends Base
      * @var string
      */
     private $getFilename="";
+    private $filesId=[];
+    private $filesList=[];
     /**
      * 获取文件列表
      * User: 陈大剩
@@ -44,8 +47,8 @@ class Index extends Base
                 $statistic_folders[]=$v;
             }
         }
-        $files=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder',$get['folder'])->where($where)->limit($get['per'])->page($get['page'])->select();
-        $filesCount=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder',$get['folder'])->count();
+        $files=Db::table('data_files')->whereNull('deleted_at')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder',$get['folder'])->where($where)->limit($get['per'])->page($get['page'])->select();
+        $filesCount=Db::table('data_files')->whereNull('deleted_at')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder',$get['folder'])->count();
         $countFiles=count($files);
         $filesAll=[];
         foreach ($files as $k =>$v){
@@ -69,7 +72,7 @@ class Index extends Base
         if (isset($get['statistic_folders'])){
             $get['statistic_folders']=intval($get['statistic_folders']);
             if ($get['statistic_folders']==1 && $get['folder']="/"){
-                $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
+                $findFolder=Db::table('file_folders')->whereNull('deleted_at')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
                 $statistic_folders[]=[
                     'id'=>$findFolder['id'],
                     'name'=>"home",
@@ -165,7 +168,7 @@ class Index extends Base
                 $client_id=$this->client_id;
                 $toFileName=$fileName;
             }
-            $oneFiles=Db::table('data_files')->where('id',$post['uuid'])->find();
+            $oneFiles=Db::table('data_files')->whereNull('deleted_at')->where('id',$post['uuid'])->find();
             if (isset($post['filename'])){
                 $name=$post['filename'];
             }else{
@@ -189,7 +192,7 @@ class Index extends Base
             if (isset($post['filename']) || isset($post['target_app'])){
                 $this->editObject(Config('env.aliyun_oss.Bucket'),$fileName,Config('env.aliyun_oss.Bucket'),$toFileName,$name,$oneFiles['content_type']);
             }
-                $resFiles=Db::table('data_files')->where('id',$post['uuid'])->update($edit);
+                $resFiles=Db::table('data_files')->whereNull('deleted_at')->where('id',$post['uuid'])->update($edit);
             if ($resFiles){
                 $access_type=$oneFiles['access_type']==0?'private':'public';
                 $resAll[]=[
@@ -207,8 +210,8 @@ class Index extends Base
                     'is_deleted'=>empty($oneFiles['deleted_at'])?'false':'true',
                     'mission_result'=>"",
                 ];
-                $count=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->sum('size');
-                Db::table('members')->where('id',$this->member_id)->data(['used_space' => $count])->update();
+                $count=Db::table('data_files')->whereNull('deleted_at')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->sum('size');
+                Db::table('members')->whereNull('deleted_at')->where('id',$this->member_id)->data(['used_space' => $count])->update();
                 return show($this->client_name, $code = "0,0",$msg ="",$errors = [],$resAll);
             }else{
                 throw new ApiException("Internal Server Error",500);
@@ -244,6 +247,7 @@ class Index extends Base
                 $resInfo=$this->uploadFile(Config('env.aliyun_oss.Bucket'), $fileName, $getPathname);
                 list($download_head,$download_url)=explode("?",$resInfo['signedUrl']);
                 $findFiles=Db::table('data_files')
+                    ->whereNull('deleted_at')
                     ->where('member_id',$this->member_id)
                     ->where('client_id',$this->client_id)
                     ->where('etag',$this->etag($resInfo['etag']))
@@ -276,7 +280,7 @@ class Index extends Base
                         'suffix'=> $getExtension,
                     ];
                     if (isset($post['uuid'])){
-                        $res= Db::table('data_files')->where('id',$uuid)->update($data);
+                        $res= Db::table('data_files')->whereNull('deleted_at')->where('id',$uuid)->update($data);
                     }else{
                         $res= Db::table('data_files')->insert($data);
                     }
@@ -298,7 +302,7 @@ class Index extends Base
                             'mission_result'=>"",
                         ];
                         try{
-                            $count=Db::table('data_files')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->sum('size');
+                            $count=Db::table('data_files')->whereNull('deleted_at')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->sum('size');
                             Db::table('members')->where('id',$this->member_id)->data(['used_space' => $count])->update();
                         }catch (Exception $e){
 
@@ -392,9 +396,9 @@ class Index extends Base
         $fist=array_shift($folderAry);
         $newdir=implode('/', $folderAry);
         if (empty($fist)){
-            $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
+            $findFolder=Db::table('file_folders')->whereNull('deleted_at')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
         }else{
-            $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('name',$fist)->where('parent_id',$parent_id)->find();
+            $findFolder=Db::table('file_folders')->whereNull('deleted_at')->where('member_id',$this->member_id)->where('name',$fist)->where('parent_id',$parent_id)->find();
         }
         if (empty($fist)){
             if (empty($findFolder)){
@@ -454,20 +458,20 @@ class Index extends Base
         $fist=array_shift($folderAry);
         $newdir=implode('/', $folderAry);
         if (empty($fist)){
-            $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
+            $findFolder=Db::table('file_folders')->whereNull('deleted_at')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
         }else{
-            $findFolder=Db::table('file_folders')->where('member_id',$this->member_id)->where('name',$fist)->where('parent_id',$parent_id)->find();
+            $findFolder=Db::table('file_folders')->whereNull('deleted_at')->where('member_id',$this->member_id)->where('name',$fist)->where('parent_id',$parent_id)->find();
         }
         if (empty($findFolder)){
             return [];
         }else{
             if (count($folderAry)==0){
-                $data=Db::table('file_folders')->where('parent_id',$findFolder['id'])->where('member_id',$this->member_id)->select();
+                $data=Db::table('file_folders')->whereNull('deleted_at')->where('parent_id',$findFolder['id'])->where('member_id',$this->member_id)->select();
                 $tree = [];
                 foreach($data as $k => $v)
                 {
-                    $count=Db::table('data_files')->where('folder_id',$v['id'])->where('member_id',$this->member_id)->where('client_id',$this->client_id)->count();
-                    $countWj=Db::table('file_folders')->where('parent_id',$v['id'])->where('member_id',$this->member_id)->count();
+                    $count=Db::table('data_files')->whereNull('deleted_at')->where('folder_id',$v['id'])->where('member_id',$this->member_id)->where('client_id',$this->client_id)->count();
+                    $countWj=Db::table('file_folders')->whereNull('deleted_at')->where('parent_id',$v['id'])->where('member_id',$this->member_id)->count();
                     unset($v['parent_id']);
                     unset($v['member_id']);
                     unset($v['created_at']);
@@ -479,6 +483,73 @@ class Index extends Base
                 return $tree;
             }else{
                 return $this->fileTree($newdir,$findFolder['id']);
+            }
+        }
+    }
+    /**
+     * 递归获取文件夹当前id
+     * User: 陈大剩
+     * @param string $folder
+     * @param int $parent_id
+     * @return int|mixed|void
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     */
+    public function deleteTree($folder="/up",$parent_id=0){
+        if (empty($folder)){
+            return $parent_id;
+        }
+        $folderAry=explode("/",$folder);
+        $fist=array_shift($folderAry);
+        $newdir=implode('/', $folderAry);
+        if (empty($fist)){
+            $findFolder=Db::table('file_folders')->whereNull('deleted_at')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
+        }else{
+            $findFolder=Db::table('file_folders')->whereNull('deleted_at')->where('member_id',$this->member_id)->where('name',$fist)->where('parent_id',$parent_id)->find();
+        }
+        if (empty($findFolder)){
+            return ;
+        }else{
+            if (empty($newdir)){
+                return $findFolder['id'];
+            }else{
+               return $this->deleteTree($newdir,$findFolder['id']);
+            }
+        }
+    }
+    /**
+     * 递归查询子文件id
+     * User: 陈大剩
+     * @param string $id
+     * @return string
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     */
+    public function deleteFile($id="6c30f291-9c66-42f8-a068-0d6d018efa16"){
+        $data=Db::table('file_folders')->whereNull('deleted_at')->where('member_id',$this->member_id)->where('parent_id',$id)->field('id')->select();
+        if (empty($data)){
+            return $this->filesId[]=$id;
+        }else{
+            foreach ($data as $k=>$v){
+                $this->deleteFile($v['id']);
+            }
+            return $this->filesId[]=$id;
+        }
+    }
+    /**
+     * 文件列表
+     * User: 陈大剩
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     */
+    public function fileList(){
+        foreach ($this->filesId as $k=>$v){
+            $id=Db::table('data_files')->whereNull('deleted_at')->where('folder_id',$v)->field('id')->select();
+            foreach ($id as $val){
+                $this->filesList[]=$val['id'];
             }
         }
     }
@@ -526,7 +597,7 @@ class Index extends Base
      */
     public function filesInfo($id){
         try{
-            $files=Db::table('data_files')->where('id',$id)->find();
+            $files=Db::table('data_files')->whereNull('deleted_at')->where('id',$id)->find();
         }catch (Exception $e){
             return errorMsg('101',$e->getMessage(),400);
         }
@@ -558,11 +629,67 @@ class Index extends Base
 
         return show($this->client_name, $code = "0,0",$msg ="",[],$resAll);
     }
+    /**
+     * 用户空间使用情况统计接口v1
+     * User: 陈大剩
+     * @return \think\response\Json
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     */
     public function me(){
         $used_space=Db::table('members')->where('id',$this->member_id)->field('used_space')->find();
         $data=[
             'used_space'=>$used_space['used_space']
         ];
         return show($this->client_name, $code = "0,0",$msg ="",[],$data);
+    }
+    /**
+     * 批量删除接口
+     * User: 陈大剩
+     * @throws ApiException
+     * @throws \think\Exception
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     * @throws \think\exception\PDOException
+     * @throws null
+     */
+    public function batch_delete(){
+        $all=[];
+        $headers = request()->getContent();
+        $data=json_decode($headers,true);
+        if (empty($data))throw new ApiException('Value is empty', 400);
+        foreach ($data['data'] as $k=>$v){
+            if (isset($v['uuid'])){
+                $all[]=$this->client_name."/".$v['uuid'];
+            }else{
+                $this->deleteFile($this->deleteTree($this->screen($v['folder'])));
+                $this->fileList();
+                foreach ($this->filesList as $val){
+                    $all[]=$this->client_name."/".$val;
+                }
+            }
+        }
+        if (empty($all)){
+            $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+        }else{
+            $ossClient = $this->new_oss();
+            try{
+                $res=$ossClient->deleteObjects(Config('env.aliyun_oss.Bucket'),$all);
+            } catch(OssException $e) {
+                throw new ApiException($e->getMessage(), 400);
+            }
+            if (count($res)==count($all)){
+                foreach ($all as $v){
+                    $ids=explode("/",$v);
+                    $filesId[]=$ids[1];
+                }
+                $sqlRes=Db::table('data_files')->whereNull('deleted_at')->where('id','in',$filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+                $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+
+            }
+        }
+        dump($Sqlfolders);
     }
 }

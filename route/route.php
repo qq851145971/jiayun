@@ -19,6 +19,7 @@ Route::group('files', function () {
     Route::post('', 'index/index/upload');
 })->pattern(['id' => '\\w{8}(-\\w{4}){3}-\\w{12}?']);
 Route::get('me', 'index/index/me');
+Route::post('batch_delete', 'index/index/batch_delete');
 return [
 
 ];
