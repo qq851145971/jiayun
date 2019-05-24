@@ -20,6 +20,7 @@ Route::group('files', function () {
 })->pattern(['id' => '\\w{8}(-\\w{4}){3}-\\w{12}?']);
 Route::get('me', 'index/index/me');
 Route::post('batch_delete', 'index/index/batch_delete');
+Route::post('move_folder', 'index/index/moveFolder');
 return [
 
 ];

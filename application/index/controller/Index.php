@@ -388,7 +388,7 @@ class Index extends Base
      * @throws \think\db\exception\ModelNotFoundException
      * @throws \think\exception\DbException
      */
-    public function directory($folder="",$parent_id=0){
+    public function directory($folder="/a",$parent_id=0){
         if (empty($folder)){
             return $parent_id;
         }
@@ -411,9 +411,9 @@ class Index extends Base
                     'updated_at'=>date('Y-m-d H:i:s.u'),
                 ];
                 try{
-                    $res=Db::table('file_folders')->insertGetId($data);
+                    $res=Db::table('file_folders')->insert($data);
                     $this->directory($newdir,$data['id']);
-                }catch (OssException $e) {
+                }catch (\Exception $e) {
                     return show($this->client_name,"100.0",'',[$e->getMessage()],[],400);
                 }
             }else{
@@ -430,12 +430,12 @@ class Index extends Base
                     'updated_at'=>date('Y-m-d H:i:s.u'),
                 ];
                 try{
-                    $res=Db::table('file_folders')->insertGetId($data);
-                    $this->directory($newdir,$data['id']);
-                    if (end($folderAry)==""){
-                         return $data['id'];
+                    $res=Db::table('file_folders')->insert($data);
+                    return $this->directory($newdir,$data['id']);
+                    if (empty(end($folderAry))){
+                        return $data['id'];
                     }
-                }catch (OssException $e) {
+                }catch (\Exception $e) {
                     return show($this->client_name,"100.0",'',[$e->getMessage()],[],400);
                 }
             }else{
@@ -761,6 +761,46 @@ class Index extends Base
                 'exists'=>false
             ];
             return $tot;
+        }
+    }
+    /**
+     * 移动文件夹／重命名文件夹
+     * User: 陈大剩
+     * @return \think\response\Json
+     * @throws ApiException
+     * @throws \think\Exception
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     * @throws \think\exception\PDOException
+     */
+    public function moveFolder(){
+        $raw = request()->getContent();
+        $rawAry=json_decode($raw,true);
+        if (isset($rawAry['source_folder']) &&isset($rawAry['target_folder'])){
+            $source_folder=$this->screen($rawAry['source_folder']);
+            $folderId=$this->deleteTree($source_folder);
+            if (empty($folderId)){
+                $errors=[
+                    'type'=>'500,5',
+                    'msg'=>'Source Folder Not Exists'
+                ];
+                return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
+            }
+            $newtarget_folder=$this->screen($rawAry['target_folder']);
+            $newId=$this->directory($newtarget_folder,0);
+            $foldersRes=Db::table('file_folders')->where('parent_id',$folderId)->where('member_id',$this->member_id)->update(['parent_id'=>$newId]);
+            $filesRes=Db::table('data_files')->where('folder_id',$folderId)->where('member_id',$this->member_id)->where('client_id',$this->client_id)->update(['folder_id'=>$newId,'folder'=>$newtarget_folder]);
+            if (!$foldersRes && !$filesRes){
+                throw new ApiException('Source Folder Not Exists', 400);
+            }
+            $data=[
+              'source_folder'=>$source_folder,
+                'target_folder'=>$newtarget_folder
+            ];
+            return show($this->client_name, '0,0',$msg ="",[],$data);
+        }else{
+            throw new ApiException('Value is empty', 400);
         }
     }
 }
