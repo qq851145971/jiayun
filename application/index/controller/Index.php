@@ -251,7 +251,7 @@ class Index extends Base
                     ->where('member_id',$this->member_id)
                     ->where('client_id',$this->client_id)
                     ->where('etag',$this->etag($resInfo['etag']))
-                    ->where('folder',"/")
+                    ->where('folder',$post['folder'])
                     ->where('suffix',$getExtension)
                     ->find();
                 $id=$this->directory($post['folder']);
@@ -685,7 +685,9 @@ class Index extends Base
             $all[]=$this->client_name."/".$val;
         }
         if (empty($all)){
-            $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+            if ($folder!=="/Converted"){
+                $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+            }
         }else{
             $ossClient = $this->new_oss();
             try{
@@ -699,8 +701,9 @@ class Index extends Base
                     $filesId[]=$ids[1];
                 }
                 $sqlRes=Db::table('data_files')->whereNull('deleted_at')->where('id','in',$this->filesList)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
-                $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
-
+                if ($folder!=="/Converted"){
+                    $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+                }
             }else{
                 $tot=[
                     'folder'=>$folder,
@@ -794,6 +797,7 @@ class Index extends Base
             if (!$foldersRes && !$filesRes){
                 throw new ApiException('Source Folder Not Exists', 400);
             }
+            $this->checkFolder($folderId);
             $data=[
               'source_folder'=>$source_folder,
                 'target_folder'=>$newtarget_folder
@@ -801,6 +805,23 @@ class Index extends Base
             return show($this->client_name, '0,0',$msg ="",[],$data);
         }else{
             throw new ApiException('Value is empty', 400);
+        }
+    }
+    /**
+     * 目录除空
+     * User: 陈大剩
+     * @param $folder_id
+     * @throws \think\Exception
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     * @throws \think\exception\PDOException
+     */
+    public function checkFolder($folder_id){
+        $files=Db::table('data_files')->whereNull('deleted_at')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder_id',$folder_id)->select();
+        $folders=Db::table('file_folders')->whereNull('deleted_at')->where('parent_id',$folder_id)->where('member_id',$this->member_id)->select();
+        if (empty($files) && empty($folders)){
+            $res=Db::table('file_folders')->where('name','<>','Converted')->whereNull('deleted_at')->where('id',$folder_id)->where('member_id',$this->member_id)->update(['deleted_at'=>date("Y-h-d H:i:s")]);
         }
     }
 }
