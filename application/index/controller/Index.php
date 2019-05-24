@@ -98,7 +98,7 @@ class Index extends Base
                 'page'=>[
                     'current_page'=>$get['page'],
                     'page_size'=>$get['per'],
-                    'total_pages'=>$filesCount,
+                    'total_pages'=>ceil($filesCount/$get['per']),
                     'total'=>$countFiles
                 ],
                 'files'=>$filesAll,
@@ -304,7 +304,7 @@ class Index extends Base
                         try{
                             $count=Db::table('data_files')->whereNull('deleted_at')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->sum('size');
                             Db::table('members')->where('id',$this->member_id)->data(['used_space' => $count])->update();
-                        }catch (Exception $e){
+                        }catch (\Exception $e){
 
                         }
 
@@ -348,7 +348,7 @@ class Index extends Base
             $ossClient = $this->new_oss();
             $res = $ossClient->copyObject($fromBucket, $fromObject, $toBucket, $toObject, $options);
             if ($res)return "1";
-        } catch (OssException $e) {
+        } catch (\Exception $e) {
             return errorMsg('101',$e->getMessage(),400);
         }
     }
@@ -656,20 +656,33 @@ class Index extends Base
      * @throws null
      */
     public function batch_delete(){
-        $all=[];
+        $all=$filesId=$tot=[];
         $headers = request()->getContent();
         $data=json_decode($headers,true);
         if (empty($data))throw new ApiException('Value is empty', 400);
         foreach ($data['data'] as $k=>$v){
             if (isset($v['uuid'])){
-                $all[]=$this->client_name."/".$v['uuid'];
+                $tot[]=$this->batchUuid($v['uuid']);
             }else{
-                $this->deleteFile($this->deleteTree($this->screen($v['folder'])));
-                $this->fileList();
-                foreach ($this->filesList as $val){
-                    $all[]=$this->client_name."/".$val;
+                $folder=$this->screen($v['folder']);
+                $id=$this->deleteTree($folder);
+                if (empty($id)){
+                    $tot[]=[
+                        'folder'=>$folder,
+                        'exists'=>false
+                    ];
+                }else{
+                   $tot[]=$this->batchFolder($folder,$id);
                 }
             }
+        }
+        return show($this->client_name, $code = "0,0",$msg ="",[],$tot);
+    }
+    public function batchFolder($folder,$id){
+        $this->deleteFile($id);
+        $this->fileList();
+        foreach ($this->filesList as $val){
+            $all[]=$this->client_name."/".$val;
         }
         if (empty($all)){
             $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
@@ -685,11 +698,69 @@ class Index extends Base
                     $ids=explode("/",$v);
                     $filesId[]=$ids[1];
                 }
-                $sqlRes=Db::table('data_files')->whereNull('deleted_at')->where('id','in',$filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+                $sqlRes=Db::table('data_files')->whereNull('deleted_at')->where('id','in',$this->filesList)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
                 $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
 
+            }else{
+                $tot=[
+                    'folder'=>$folder,
+                    'exists'=>false
+                ];
+                return $tot;
             }
         }
-        dump($Sqlfolders);
+        if (!empty($sqlRes) || !empty($Sqlfolders)){
+            $tot=[
+                'folder'=>$folder,
+                'exists'=>true
+            ];
+            return $tot;
+        }else{
+            $tot=[
+                'folder'=>$folder,
+                'exists'=>true
+            ];
+            return $tot;
+        }
+    }
+    public function batchUuid($uuid){
+        try{
+            $res=Db::table('data_files')->whereNull('deleted_at')->where('id',$uuid)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+        }catch (\Exception $e){
+            $tot=[
+                'uuid'=>$uuid,
+                'exists'=>'uuid 格式错误'
+                ];
+            return $tot;
+        }
+
+        if ($res){
+            $all[]=$this->client_name."/".$uuid;
+            $ossClient = $this->new_oss();
+            try{
+                $res=$ossClient->deleteObjects(Config('env.aliyun_oss.Bucket'),$all);
+            } catch(\Exception $e) {
+                throw new ApiException($e->getMessage(), 400);
+            }
+            if (count($res)==count($all)){
+                $tot=[
+                    'uuid'=>$uuid,
+                    'exists'=>true
+                ];
+                return $tot;
+            }else{
+                $tot=[
+                    'uuid'=>$uuid,
+                    'exists'=>false
+                ];
+                return $tot;
+            }
+        }else{
+            $tot=[
+                'uuid'=>$uuid,
+                'exists'=>false
+            ];
+            return $tot;
+        }
     }
 }
