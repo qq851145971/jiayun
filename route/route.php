@@ -21,6 +21,7 @@ Route::group('files', function () {
 Route::get('me', 'index/index/me');
 Route::post('batch_delete', 'index/index/batch_delete');
 Route::post('move_folder', 'index/index/moveFolder');
+Route::post('batch_update', 'index/index/batch_update');
 return [
 
 ];

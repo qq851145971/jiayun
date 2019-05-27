@@ -253,7 +253,7 @@ class Index extends Base
                     ->where('etag',$this->etag($resInfo['etag']))
                     ->where('folder',$post['folder'])
                     ->where('suffix',$getExtension)
-                    ->find();
+                    ->select();
                 $id=$this->directory($post['folder']);
                 if (empty($id)){
                     throw new ApiException("Internal Server MyError",500);
@@ -823,5 +823,89 @@ class Index extends Base
         if (empty($files) && empty($folders)){
             $res=Db::table('file_folders')->where('name','<>','Converted')->whereNull('deleted_at')->where('id',$folder_id)->where('member_id',$this->member_id)->update(['deleted_at'=>date("Y-h-d H:i:s")]);
         }
+    }
+
+    /**
+     * 批量更新（移动/重命名文件）
+     * User: 陈大剩
+     * @return \think\response\Json
+     */
+    public function batch_update(){
+        $raw = request()->getContent();
+        if (empty($raw)){
+            $errors=[
+                'type'=>'500,5',
+                'msg'=>'Source Folder Not Exists'
+            ];
+            return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
+        }
+        $rawAry=json_decode($raw,true);
+        if (empty($rawAry['data'])){
+            $errors=[
+                'type'=>'500,5',
+                'msg'=>'Source Folder Not Exists'
+            ];
+            return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
+        }
+        $tot=[];
+        foreach ($rawAry['data'] as $k=>$v){
+            if (!isset($v['uuid'])){
+                $errors=[
+                    'type'=>'300,8',
+                    'msg'=>'Resources Not Exists'
+                ];
+                return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
+            }else{
+                $tot[]=$this->updateFolder($v);
+            }
+
+        }
+        return show($this->client_name, '0,0',$msg ="",[],$tot);
+    }
+    public function updateFolder($data){
+        $tot=$upData=[];
+        $find=Db::table('data_files')->where('id',$data['uuid'])->whereNull('deleted_at')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->find();
+        if (empty($find)){
+            $tot=[
+                'uuid'=>$data['uuid'],
+                'msg'=>'uuid Not Exists'
+            ];
+            return $tot;
+        }
+        if (!empty($data['filename'])){
+            $fromObject=$this->client_name."/".$find['id'];
+            $up=$this->editObject(Config('env.aliyun_oss.Bucket'), $fromObject, Config('env.aliyun_oss.Bucket'), $fromObject,$data['filename'],$find['content_type']);
+            if ($up==1){
+                $upData['filename']=$data['filename'];
+            }
+        }
+        if (!empty($data['folder'])){
+            $folder=$this->screen($data['folder']);
+            $folderId=$this->directory($folder);
+            $upData['folder_id']=$folderId;
+            $upData['folder']=$data['folder'];
+        }
+        if (!empty($data['modify_time'])){
+            $modify_time=$data['modify_time'];
+            $upData['last_modified_time']=$modify_time;
+        }
+        $upRes=Db::table('data_files')->where('id',$data['uuid'])->whereNull('deleted_at')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->data($upData)->update();
+        if ($upRes){
+            if (empty($data['folder']))$upData['folder']=$find['folder'];
+            if (empty($data['filename']))$upData['filename']=$find['filename'];
+            $tot=[
+                'uuid'=>$data['uuid'],
+                'folder'=>$upData['folder'],
+                'filename'=>$upData['filename']
+            ];
+            return $tot;
+        }else{
+            $tot=[
+                'uuid'=>$data['uuid'],
+                'msg'=>'Sql Not Exists'
+            ];
+            return $tot;
+        }
+
     }
 }
