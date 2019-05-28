@@ -15,4 +15,11 @@ return [
         'Endpoint'   => '',  //阿里云oss 外网地址endpoint
         'Bucket'     => '',  //Bucket名称
     ],
+    'redis'=>[
+        'hostname'        => '127.0.0.1',
+        'password'        => '',
+        'hostport'        => '6379',
+        'out_time'        =>120,
+        'time_out'        =>3
+    ]
 ];
