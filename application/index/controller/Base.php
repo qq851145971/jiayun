@@ -76,6 +76,45 @@ class Base extends Controller
             "token"=>$jwt
         ]);
     }
+    public function code62($x){
+        $show='';
+        while($x>0){
+            $s=$x % 62;
+            if ($s>35){
+                $s=chr($s+61);
+            }elseif($s>9&&$s<=35){
+                $s=chr($s+55);
+            }
+            $show.=$s;
+            $x=floor($x/62);
+        }
+        return $show;
+    }
+    public function shorturl($url){
+        $url=crc32($url);
+        $result=sprintf("%u",$url);
+        return $this->code62($result);
+    }
+
+    public function GetRandStr($len)
+    {
+        $chars = array(
+            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k",
+            "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
+            "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G",
+            "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R",
+            "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2",
+            "3", "4", "5", "6", "7", "8", "9"
+        );
+        $charsLen = count($chars) - 1;
+        shuffle($chars);
+        $output = "";
+        for ($i=0; $i<$len; $i++)
+        {
+            $output .= $chars[mt_rand(0, $charsLen)];
+        }
+        return $output;
+    }
     /**
      * 空方法
      */

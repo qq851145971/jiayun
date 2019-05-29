@@ -2,7 +2,7 @@
 namespace app\index\controller;
 use think\Config;
 use think\Db;
-
+use app\common\controller\Redis;
 use app\common\controller\ApiException;
 class Index extends Base
 {
@@ -160,9 +160,9 @@ class Index extends Base
             }
         }
         if (isset($post['uuid']) && empty($file)){
-            $fileName = $this->client_name ."/".$post['uuid'];
+            $fileName = "private"."/".$this->member_id."/".$this->client_name ."/".$post['uuid'];
             if (isset($post['target_app'])){
-                $toFileName=$post['target_app'] ."/".$post['uuid'];
+                $toFileName="private".$this->member_id."/".$post['target_app'] ."/".$post['uuid'];
                 $client_id=$appName['id'];
             }else{
                 $client_id=$this->client_id;
@@ -243,7 +243,7 @@ class Index extends Base
                 if (isset($post['filename'])){
                     $this->getFilename=$post['filename'];
                 }
-                $fileName = $this->client_name ."/".$uuid;
+                $fileName = "private"."/".$this->member_id."/".$this->client_name ."/".$uuid;
                 $resInfo=$this->uploadFile(Config('env.aliyun_oss.Bucket'), $fileName, $getPathname);
                 list($download_head,$download_url)=explode("?",$resInfo['signedUrl']);
                 $findFiles=Db::table('data_files')
@@ -259,6 +259,7 @@ class Index extends Base
                     throw new ApiException("Internal Server MyError",500);
                 }
                 if (count($findFiles)>=1){
+                    $this->FoldeDell($uuid);
                     throw new ApiException("文件夹中已有相同文件", 400);
                 }else{
                     $data=[
@@ -682,7 +683,7 @@ class Index extends Base
         $this->deleteFile($id);
         $this->fileList();
         foreach ($this->filesList as $val){
-            $all[]=$this->client_name."/".$val;
+            $all[]="private"."/".$this->member_id."/".$this->client_name."/".$val;
         }
         if (empty($all)){
             if ($folder!=="/Converted"){
@@ -700,7 +701,7 @@ class Index extends Base
                     $ids=explode("/",$v);
                     $filesId[]=$ids[1];
                 }
-                $sqlRes=Db::table('data_files')->whereNull('deleted_at')->where('id','in',$this->filesList)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+                $sqlRes=Db::table('data_files')->where('folder','<>','/Converted')->whereNull('deleted_at')->where('id','in',$this->filesList)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
                 if ($folder!=="/Converted"){
                     $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
                 }
@@ -728,7 +729,7 @@ class Index extends Base
     }
     public function batchUuid($uuid){
         try{
-            $res=Db::table('data_files')->whereNull('deleted_at')->where('id',$uuid)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+            $res=Db::table('data_files')->where('folder','<>','/Converted')->whereNull('deleted_at')->where('id',$uuid)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
         }catch (\Exception $e){
             $tot=[
                 'uuid'=>$uuid,
@@ -738,7 +739,7 @@ class Index extends Base
         }
 
         if ($res){
-            $all[]=$this->client_name."/".$uuid;
+            $all[]="private"."/".$this->member_id."/".$this->client_name."/".$uuid;
             $ossClient = $this->new_oss();
             try{
                 $res=$ossClient->deleteObjects(Config('env.aliyun_oss.Bucket'),$all);
@@ -764,6 +765,24 @@ class Index extends Base
                 'exists'=>false
             ];
             return $tot;
+        }
+    }
+    /**
+     * 根据UUID删除文件
+     * User: 陈大剩
+     * @param $uuid
+     * @throws ApiException
+     * @throws null
+     */
+    public function FoldeDell($uuid){
+        if ($uuid) {
+            $all[] = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $uuid;
+            $ossClient = $this->new_oss();
+            try {
+                $res = $ossClient->deleteObjects(Config('env.aliyun_oss.Bucket'), $all);
+            } catch (\Exception $e) {
+                throw new ApiException($e->getMessage(), 400);
+            }
         }
     }
     /**
@@ -824,7 +843,6 @@ class Index extends Base
             $res=Db::table('file_folders')->where('name','<>','Converted')->whereNull('deleted_at')->where('id',$folder_id)->where('member_id',$this->member_id)->update(['deleted_at'=>date("Y-h-d H:i:s")]);
         }
     }
-
     /**
      * 批量更新（移动/重命名文件）
      * User: 陈大剩
@@ -873,7 +891,7 @@ class Index extends Base
             return $tot;
         }
         if (!empty($data['filename'])){
-            $fromObject=$this->client_name."/".$find['id'];
+            $fromObject="private"."/".$this->member_id."/".$this->client_name."/".$find['id'];
             $up=$this->editObject(Config('env.aliyun_oss.Bucket'), $fromObject, Config('env.aliyun_oss.Bucket'), $fromObject,$data['filename'],$find['content_type']);
             if ($up==1){
                 $upData['filename']=$data['filename'];
@@ -906,6 +924,159 @@ class Index extends Base
             ];
             return $tot;
         }
+
+    }
+    /**
+     * 分享文件
+     * User: 陈大剩
+     * @return \think\response\Json
+     * @throws \OSS\Core\OssException
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     */
+    public function share(){
+        $raw = request()->getContent();
+        $data=json_decode($raw,true);
+        if (!isset($data['uuid']) || !isset($data['access_type'])){
+            $errors=[
+                'type'=>'300,0',
+                'msg'=>'File not found'
+            ];
+            return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
+        }
+        try{
+            $tot=Db::table('data_files')->where('id',$data['uuid'])->whereNull('deleted_at')->find();
+
+        }catch (\Exception $e){
+                $errors=[
+                    'type'=>'300,0',
+                    'msg'=>'Uuid not found'
+                ];
+                return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
+        }
+        if (empty($tot)){
+            $errors=[
+                'type'=>'300,0',
+                'msg'=>'Uuid not found'
+            ];
+            return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
+        }
+        if ($data['access_type']=="public"){
+            $oss['access_type']="public-read";
+        }
+        if ($data['access_type']=="secret"){
+            $oss['access_type']="private";
+        }
+        if (empty($oss['access_type'])){
+            $errors=[
+                'type'=>'300,0',
+                'msg'=>'Access_type not found'
+            ];
+            return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
+        }
+        $fileName = "private"."/".$this->member_id."/".$this->client_name ."/".$data['uuid'];
+        if ($oss['access_type']==="public-read"){
+            $count=Db::table('sharings')->where('data_file_id',$data['uuid'])->where('member_id',$this->member_id)->where('publish_status',1)->find();
+            if (empty($count)){
+                try {
+                    $ossClient = $this->new_oss();
+                    $res = $ossClient->putObjectAcl(Config('env.aliyun_oss.Bucket'),$fileName,$oss['access_type']);
+                } catch (OssException $e) {
+                    return errorMsg('101',$e->getMessage(),400);
+                }
+                $str=$this->shorturl(Config('env.oss_custom_host').$fileName);
+                $uuid=guid();
+                $sharData=[
+                    'id'=>$uuid,
+                    'member_id'=>$this->member_id,
+                    'data_file_id'=>$data['uuid'],
+                    'expiration'=>date("Y-h-d H:i:s"),
+                    'next_expiration'=>date("Y-h-d H:i:s"),
+                    'created_at'=>date("Y-h-d H:i:s"),
+                    'updated_at'=>date("Y-h-d H:i:s"),
+                    'publish_status'=>1,
+                    'short_url'=>$str,
+                    'visit_times'=>0
+                ];
+                $res=Db::table('sharings')->insert($sharData);
+                if ($res){
+                    $resData=[
+                      'filename'=>$tot['filename'],
+                        'sharing'=>[
+                            'file_uuid'=>$data['uuid'],
+                            'expiration'=>$sharData['created_at'],
+                            'secret'=>"",
+                            'share_link'=>config('env.website_hostname')."/s/".$str,
+                            'created_at'=>strtotime($sharData['created_at'])
+                        ]
+                    ];
+                    return show($this->client_name, '0,0',$msg ="",[],$resData);
+                }
+            }else{
+                $resData=[
+                    'filename'=>$tot['filename'],
+                    'sharing'=>[
+                        'file_uuid'=>$data['uuid'],
+                        'expiration'=>$count['created_at'],
+                        'secret'=>"",
+                        'share_link'=>$count['short_url'],
+                        'created_at'=>strtotime($count['created_at'])
+                    ]
+                ];
+                return show($this->client_name, '0,0',$msg ="",[],$resData);
+            }
+        }
+        if($oss['access_type']==="private"){
+            if (!isset($data['expiry'])){
+                $data['expiry']=1800;
+            }
+            $str=$this->shorturl(Config('env.oss_custom_host').$fileName);
+            try {
+                $ossClient = $this->new_oss();
+                $res = $ossClient->putObjectAcl(Config('env.aliyun_oss.Bucket'),$fileName,$oss['access_type']);
+                $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.Bucket'),$fileName, $data['expiry']);
+                $res['signedUrl'] = htmlspecialchars_decode($signedUrl);
+            } catch (OssException $e) {
+                return errorMsg('101',$e->getMessage(),400);
+            }
+            $url=explode("?",$res['signedUrl']);
+            $rand=$this->GetRandStr(4);
+            $uuid=guid();
+            $sharData=[
+                'id'=>$uuid,
+                'member_id'=>$this->member_id,
+                'data_file_id'=>$data['uuid'],
+                'expiration'=>date("Y-h-d H:i:s",time()+$data['expiry']),
+                'next_expiration'=>date("Y-h-d H:i:s"),
+                'created_at'=>date("Y-h-d H:i:s"),
+                'updated_at'=>date("Y-h-d H:i:s"),
+                'secret'=>$rand,
+                'publish_status'=>1,
+                'short_url'=>$str,
+                'download_url'=>$url[1],
+                'visit_times'=>0
+            ];
+            $res=Db::table('sharings')->insert($sharData);
+            if ($res){
+                $resData=[
+                    'filename'=>$tot['filename'],
+                    'sharing'=>[
+                        'file_uuid'=>$data['uuid'],
+                        'expiration'=>$sharData['created_at'],
+                        'secret'=>"$rand",
+                        'share_link'=>config('env.website_hostname')."/s/".$str,
+                        'created_at'=>strtotime($sharData['created_at'])
+                    ]
+                ];
+                return show($this->client_name, '0,0',$msg ="",[],$resData);
+            }
+        }
+        $errors=[
+            'type'=>'300,0',
+            'msg'=>'Access_type not found'
+        ];
+        return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
 
     }
 }
