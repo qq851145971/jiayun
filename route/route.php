@@ -25,6 +25,8 @@ Route::post('batch_update', 'index/index/batch_update');
 Route::post('share', 'index/index/share');
 Route::post('cancel_share', 'index/index/cancel_share');
 Route::get('sharings', 'index/index/sharings');
+Route::get('s/:name', 'index/Download/index');
+Route::rule('download/:name', 'index/Download/download');
 return [
 
 ];

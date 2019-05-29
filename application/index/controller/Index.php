@@ -976,43 +976,63 @@ class Index extends Base
             return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
         }
         $fileName = "private"."/".$this->member_id."/".$this->client_name ."/".$data['uuid'];
-        if ($oss['access_type']==="public-read"){
-            $count=Db::table('sharings')->where('data_file_id',$data['uuid'])->where('member_id',$this->member_id)->where('publish_status',1)->find();
+        if ($oss['access_type']=="public-read"){
+            $count=Db::table('sharings')->where('data_file_id',$data['uuid'])->where('member_id',$this->member_id)->where('secret',"")->where('publish_status',1)->find();
             if (empty($count)){
-                try {
-                    $ossClient = $this->new_oss();
-                    $res = $ossClient->putObjectAcl(Config('env.aliyun_oss.Bucket'),$fileName,$oss['access_type']);
-                } catch (OssException $e) {
-                    return errorMsg('101',$e->getMessage(),400);
-                }
-                $str=$this->shorturl(Config('env.oss_custom_host').$fileName);
-                $uuid=guid();
-                $sharData=[
-                    'id'=>$uuid,
-                    'member_id'=>$this->member_id,
-                    'data_file_id'=>$data['uuid'],
-                    'expiration'=>date("Y-h-d H:i:s"),
-                    'next_expiration'=>date("Y-h-d H:i:s"),
-                    'created_at'=>date("Y-h-d H:i:s"),
-                    'updated_at'=>date("Y-h-d H:i:s"),
-                    'publish_status'=>1,
-                    'short_url'=>$str,
-                    'visit_times'=>0
-                ];
-                $res=Db::table('sharings')->insert($sharData);
-                if ($res){
-                    $resData=[
-                      'filename'=>$tot['filename'],
-                        'sharing'=>[
-                            'file_uuid'=>$data['uuid'],
-                            'expiration'=>$sharData['created_at'],
-                            'secret'=>"",
-                            'share_link'=>config('env.website_hostname')."/s/".$str,
-                            'created_at'=>strtotime($sharData['created_at'])
-                        ]
+                $shar=Db::table('sharings')->where('secret',"")->where('data_file_id',$data['uuid'])->where('member_id',$this->member_id)->find();
+                if (empty($shar)){
+                    try {
+                        $ossClient = $this->new_oss();
+                        $res = $ossClient->putObjectAcl(Config('env.aliyun_oss.Bucket'),$fileName,$oss['access_type']);
+                    } catch (OssException $e) {
+                        return errorMsg('101',$e->getMessage(),400);
+                    }
+                    $str=$this->shorturl(Config('env.oss_custom_host').$fileName);
+                    $uuid=guid();
+                    $sharData=[
+                        'id'=>$uuid,
+                        'member_id'=>$this->member_id,
+                        'data_file_id'=>$data['uuid'],
+                        'expiration'=>date("Y-h-d H:i:s"),
+                        'next_expiration'=>date("Y-h-d H:i:s"),
+                        'created_at'=>date("Y-h-d H:i:s"),
+                        'updated_at'=>date("Y-h-d H:i:s"),
+                        'publish_status'=>1,
+                        'short_url'=>$str,
+                        'visit_times'=>0
                     ];
-                    return show($this->client_name, '0,0',$msg ="",[],$resData);
+
+                    $res=Db::table('sharings')->insert($sharData);
+                    if ($res){
+                        $resData=[
+                            'filename'=>$tot['filename'],
+                            'sharing'=>[
+                                'file_uuid'=>$data['uuid'],
+                                'expiration'=>$sharData['created_at'],
+                                'secret'=>"",
+                                'share_link'=>config('env.website_hostname')."/s/".$str,
+                                'created_at'=>strtotime($sharData['created_at'])
+                            ]
+                        ];
+                        return show($this->client_name, '0,0',$msg ="",[],$resData);
+                    }
+                }else{
+                    $res=Db::table('sharings')->where('secret',"")->where('data_file_id',$data['uuid'])->where('member_id',$this->member_id)->update(['publish_status'=>1]);
+                    if ($res){
+                        $resData=[
+                            'filename'=>$tot['filename'],
+                            'sharing'=>[
+                                'file_uuid'=>$data['uuid'],
+                                'expiration'=>$shar['created_at'],
+                                'secret'=>"",
+                                'share_link'=>config('env.website_hostname')."/s/".$shar['short_url'],
+                                'created_at'=>strtotime($shar['created_at'])
+                            ]
+                        ];
+                        return show($this->client_name, '0,0',$msg ="",[],$resData);
+                    }
                 }
+
             }else{
                 $resData=[
                     'filename'=>$tot['filename'],
@@ -1020,18 +1040,18 @@ class Index extends Base
                         'file_uuid'=>$data['uuid'],
                         'expiration'=>$count['created_at'],
                         'secret'=>"",
-                        'share_link'=>$count['short_url'],
+                        'share_link'=>config('env.website_hostname')."/s/".$count['short_url'],
                         'created_at'=>strtotime($count['created_at'])
                     ]
                 ];
                 return show($this->client_name, '0,0',$msg ="",[],$resData);
             }
         }
-        if($oss['access_type']==="private"){
+        if($oss['access_type']=="private"){
             if (!isset($data['expiry'])){
                 $data['expiry']=1800;
             }
-            $str=$this->shorturl(Config('env.oss_custom_host').$fileName);
+
             try {
                 $ossClient = $this->new_oss();
                 $res = $ossClient->putObjectAcl(Config('env.aliyun_oss.Bucket'),$fileName,$oss['access_type']);
@@ -1041,6 +1061,7 @@ class Index extends Base
                 return errorMsg('101',$e->getMessage(),400);
             }
             $url=explode("?",$res['signedUrl']);
+            $str=$this->shorturl(Config('env.oss_custom_host').$fileName."?".$url[1]);
             $rand=$this->GetRandStr(4);
             $uuid=guid();
             $sharData=[
@@ -1057,6 +1078,7 @@ class Index extends Base
                 'download_url'=>$url[1],
                 'visit_times'=>0
             ];
+            Db::table('sharings')->where('data_file_id',$data['uuid'])->where('member_id',$this->member_id)->where('publish_status',1)->update(['publish_status'=>3]);
             $res=Db::table('sharings')->insert($sharData);
             if ($res){
                 $resData=[

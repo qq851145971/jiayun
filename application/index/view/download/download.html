@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>加云(Staging)</title>
+</head>
+<body>
+<div id="main-content">
+    <h1>Welcome To Kdan Share Center</h1>
+    <h1>{$msg}</h1>
+    <div class="verify-form">
+        <form action="/kd/public/download/{$name}" accept-charset="UTF-8" method="post">
+            <div class="title">
+                        <span class="verify-property">
+                            <strong></strong>给您加密分享了文件
+                        </span>
+            </div>
+            <div class="verify-input ac-close clearfix">
+                <dl class="pickpw clearfix">
+                    <label for="share_请输入提取密码：">请输入提取密码：</label>
+                    <input type="text" name="share[password]" id="share_password" />
+                    <div id="submitBtn">
+                        <input type="submit" name="commit" value="提取文件" class="btn" data-disable-with="提取文件" />
+                    </div>
+                </dl>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>
