@@ -269,7 +269,7 @@ class Index extends Base
                         'etag'=>$this->etag($resInfo['etag']),
                         'access_type'=>0,
                         'filename'=>$this->getFilename,
-                        'size'=>$resInfo['info']['size_upload'],
+                        'size'=>$resInfo['info']['size_upload']/1000,
                         'content_type'=>$resInfo['oss-requestheaders']['Content-Type'],
                         'folder'=>$post['folder'],
                         'download_url'=>$download_url,
@@ -1078,5 +1078,44 @@ class Index extends Base
         ];
         return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
 
+    }
+    /**
+     * 取消分享接口
+     * User: 陈大剩
+     * @return \think\response\Json
+     * @throws \think\Exception
+     * @throws \think\exception\PDOException
+     */
+    public function cancel_share(){
+        $raw = request()->getContent();
+        $data=json_decode($raw,true);
+        if (!isset($data['sid'])){
+            $errors=[
+                'type'=>'300,9',
+                'msg'=>'Sharing Not Exists'
+            ];
+            return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
+        }
+        if (empty($data['sid'])){
+            $errors=[
+                'type'=>'300,9',
+                'msg'=>'Sharing Not Exists'
+            ];
+            return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
+        }
+        $res=Db::table('sharings')->where('member_id',$this->member_id)->where('publish_status',1)->where('short_url',$data['sid'])->update(['publish_status'=>3]);
+        if ($res){
+            $tot=[
+              'sid'=>$data['sid'],
+                'status'=>true
+            ];
+            return show($this->client_name, '0,0',$msg ="",[],$tot);
+        }else{
+            $errors=[
+                'type'=>'300,9',
+                'msg'=>'Sharing Not Exists'
+            ];
+            return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
+        }
     }
 }

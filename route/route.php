@@ -23,6 +23,7 @@ Route::post('batch_delete', 'index/index/batch_delete');
 Route::post('move_folder', 'index/index/moveFolder');
 Route::post('batch_update', 'index/index/batch_update');
 Route::post('share', 'index/index/share');
+Route::post('cancel_share', 'index/index/cancel_share');
 return [
 
 ];
