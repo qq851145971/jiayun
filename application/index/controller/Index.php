@@ -1118,4 +1118,42 @@ class Index extends Base
             return show($this->client_name, $errors['type'],$msg ="",$errors,[]);
         }
     }
+    /**
+     * 分享列表（内部接口）
+     * User: 陈大剩
+     * @return \think\response\Json
+     */
+    public function sharings(){
+        $get=input('get.ids');
+        if (empty($get)){
+            return show($this->client_name,"0.0","",[]);
+        }
+        $get=str_replace("，",",",$get);
+        $data=explode(",",$get);
+        foreach ($data as $v){
+            try{
+                $tot=Db::table('sharings')->where('member_id',$this->member_id)->where('id',$v)->field('short_url,visit_times')->find();
+            }catch (\Exception $e){
+                $tot=[
+                  'short_url'=>null,
+                    'visit_times'=>null
+                ];
+            }
+            if (empty($tot['short_url'])){
+                $url='Uuid empty';
+            }else{
+                $url=config('env.website_hostname')."/s/".$tot['short_url'];
+            }
+            if (empty($tot['visit_times'])){
+                $visit_times=null;
+            }else{
+                $visit_times=$tot['visit_times'];
+            }
+            $res[$v]=[
+                'share_link'=>$url,
+                'visit_times'=>$visit_times
+            ];
+        }
+        return show($this->client_name,"0.0","",[],$res);
+    }
 }
