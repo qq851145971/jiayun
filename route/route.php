@@ -8,25 +8,48 @@
 // +----------------------------------------------------------------------
 // | Author: liu21st <liu21st@gmail.com>
 // +----------------------------------------------------------------------
+use think\facade\Route;
+use think\facade\Request;
+$version = Request::header('Accept');
+if (empty($version)){
+    $v='v1';
+}else {
+    $versionAty=explode(";",$version);
+    if (empty($versionAty[1])){
+        $v='v1';
+    }else{
+        $ary=explode("=",$versionAty[1]);
+        if (count($ary)<2){
+            $v='v1';
+        }else{
+            if (empty((int)$ary[1])){
+                $v='v1';
+            }else{
+                if (is_numeric((int)$ary[1])){
+                    $v='v'.$ary[1];
+                }else{
+                    $v='v1';
+                }
+            }
+        }
 
-Route::get('think', function () {
-    return 'hello,ThinkPHP5!';
-});
+    }
+}
 
-Route::group('files', function () {
-    Route::get(':id', 'index/index/filesInfo');
-    Route::get('', 'index/index/files');
-    Route::post('', 'index/index/upload');
-})->pattern(['id' => '\\w{8}(-\\w{4}){3}-\\w{12}?']);
-Route::get('me', 'index/index/me');
-Route::post('batch_delete', 'index/index/batch_delete');
-Route::post('move_folder', 'index/index/moveFolder');
-Route::post('batch_update', 'index/index/batch_update');
-Route::post('share', 'index/index/share');
-Route::post('cancel_share', 'index/index/cancel_share');
-Route::get('sharings', 'index/index/sharings');
-Route::get('s/:name', 'index/Download/index');
-Route::rule('download/:name', 'index/Download/download');
+/**
+ * 路由开始
+ */
+Route::get('files', 'index/'.$v.'.index/files');
+Route::post('files', 'index/'.$v.'.index/upload');
+Route::get('files/:id', 'index/'.$v.'.index/filesInfo')->pattern(['id' => '\\w{8}(-\\w{4}){3}-\\w{12}?']);
+Route::get('me', 'index/'.$v.'.index/me');
+Route::post('batch_delete', 'index/'.$v.'.index/batch_delete');
+Route::post('move_folder', 'index/'.$v.'.index/moveFolder');
+Route::post('batch_update', 'index/'.$v.'.index/batch_update');
+Route::post('share', 'index/'.$v.'.index/share');
+Route::post('cancel_share', 'index/'.$v.'.index/cancel_share');
+Route::get('sharings', 'index/'.$v.'.index/sharings');
+Route::get('s/:name', 'index/'.$v.'.Download/index');
+Route::rule('download/:name', 'index/'.$v.'.Download/download');
 return [
-
 ];

@@ -18,6 +18,6 @@ class MyError
 
     protected function msg($name)
     {
-        return errorMsg($name,440);
+        return errorMsg($name,404);
     }
 }

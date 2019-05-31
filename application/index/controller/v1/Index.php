@@ -1,5 +1,5 @@
 <?php
-namespace app\index\controller;
+namespace app\index\controller\v1;
 use think\Config;
 use think\Db;
 use app\common\controller\Redis;
@@ -37,7 +37,7 @@ class Index extends Base
         $where=$statistic_folders=[];
         if (isset($get['last_refresh_time'])) {
             if (strlen($get['last_refresh_time'])<10)  throw new ApiException("请传入有效时间戳",500);
-            $where[]=["updated_at",">=",date("Y-h-d H:i:s",$get['last_refresh_time'])];
+            $where[]=["updated_at",">=",date("Y-m-d H:i:s",$get['last_refresh_time'])];
         }
         if (isset($get['statistic_folders'])){
             $get['statistic_folders']=intval($get['statistic_folders']);
@@ -687,7 +687,7 @@ class Index extends Base
         }
         if (empty($all)){
             if ($folder!=="/Converted"){
-                $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+                $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-m-d H:i:s')]);
             }
         }else{
             $ossClient = $this->new_oss();
@@ -701,9 +701,9 @@ class Index extends Base
                     $ids=explode("/",$v);
                     $filesId[]=$ids[1];
                 }
-                $sqlRes=Db::table('data_files')->where('folder','<>','/Converted')->whereNull('deleted_at')->where('id','in',$this->filesList)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+                $sqlRes=Db::table('data_files')->where('folder','<>','/Converted')->whereNull('deleted_at')->where('id','in',$this->filesList)->update(['deleted_at'=>date('Y-m-d H:i:s')]);
                 if ($folder!=="/Converted"){
-                    $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+                    $Sqlfolders=Db::table('file_folders')->whereNull('deleted_at')->where('id','in',$this->filesId)->update(['deleted_at'=>date('Y-m-d H:i:s')]);
                 }
             }else{
                 $tot=[
@@ -729,7 +729,7 @@ class Index extends Base
     }
     public function batchUuid($uuid){
         try{
-            $res=Db::table('data_files')->where('folder','<>','/Converted')->whereNull('deleted_at')->where('id',$uuid)->update(['deleted_at'=>date('Y-h-d H:i:s')]);
+            $res=Db::table('data_files')->where('folder','<>','/Converted')->whereNull('deleted_at')->where('id',$uuid)->update(['deleted_at'=>date('Y-m-d H:i:s')]);
         }catch (\Exception $e){
             $tot=[
                 'uuid'=>$uuid,
@@ -774,6 +774,7 @@ class Index extends Base
      * @throws ApiException
      * @throws null
      */
+
     public function FoldeDell($uuid){
         if ($uuid) {
             $all[] = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $uuid;
@@ -840,7 +841,7 @@ class Index extends Base
         $files=Db::table('data_files')->whereNull('deleted_at')->where('client_id',$this->client_id)->where('member_id',$this->member_id)->where('folder_id',$folder_id)->select();
         $folders=Db::table('file_folders')->whereNull('deleted_at')->where('parent_id',$folder_id)->where('member_id',$this->member_id)->select();
         if (empty($files) && empty($folders)){
-            $res=Db::table('file_folders')->where('name','<>','Converted')->whereNull('deleted_at')->where('id',$folder_id)->where('member_id',$this->member_id)->update(['deleted_at'=>date("Y-h-d H:i:s")]);
+            $res=Db::table('file_folders')->where('name','<>','Converted')->whereNull('deleted_at')->where('id',$folder_id)->where('member_id',$this->member_id)->update(['deleted_at'=>date("Y-m-d H:i:s")]);
         }
     }
     /**
@@ -993,10 +994,10 @@ class Index extends Base
                         'id'=>$uuid,
                         'member_id'=>$this->member_id,
                         'data_file_id'=>$data['uuid'],
-                        'expiration'=>date("Y-h-d H:i:s"),
-                        'next_expiration'=>date("Y-h-d H:i:s"),
-                        'created_at'=>date("Y-h-d H:i:s"),
-                        'updated_at'=>date("Y-h-d H:i:s"),
+                        'expiration'=>date("Y-m-d H:i:s"),
+                        'next_expiration'=>date("Y-m-d H:i:s"),
+                        'created_at'=>date("Y-m-d H:i:s"),
+                        'updated_at'=>date("Y-m-d H:i:s"),
                         'publish_status'=>1,
                         'short_url'=>$str,
                         'visit_times'=>0
@@ -1068,10 +1069,10 @@ class Index extends Base
                 'id'=>$uuid,
                 'member_id'=>$this->member_id,
                 'data_file_id'=>$data['uuid'],
-                'expiration'=>date("Y-h-d H:i:s",time()+$data['expiry']),
-                'next_expiration'=>date("Y-h-d H:i:s"),
-                'created_at'=>date("Y-h-d H:i:s"),
-                'updated_at'=>date("Y-h-d H:i:s"),
+                'expiration'=>date("Y-m-d H:i:s",time()+$data['expiry']),
+                'next_expiration'=>date("Y-m-d H:i:s"),
+                'created_at'=>date("Y-m-d H:i:s"),
+                'updated_at'=>date("Y-m-d H:i:s"),
                 'secret'=>$rand,
                 'publish_status'=>1,
                 'short_url'=>$str,

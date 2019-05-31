@@ -6,7 +6,7 @@
  * Time: 17:58
  */
 
-namespace app\index\controller;
+namespace app\index\controller\v1;
 
 use think\Controller;
 use app\common\controller\ApiException;
