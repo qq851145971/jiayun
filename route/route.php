@@ -39,17 +39,18 @@ if (empty($version)){
 /**
  * 路由开始
  */
-Route::get('files', 'index/'.$v.'.index/files');
-Route::post('files', 'index/'.$v.'.index/upload');
-Route::get('files/:id', 'index/'.$v.'.index/filesInfo')->pattern(['id' => '\\w{8}(-\\w{4}){3}-\\w{12}?']);
-Route::get('me', 'index/'.$v.'.index/me');
-Route::post('batch_delete', 'index/'.$v.'.index/batch_delete');
-Route::post('move_folder', 'index/'.$v.'.index/moveFolder');
-Route::post('batch_update', 'index/'.$v.'.index/batch_update');
-Route::post('share', 'index/'.$v.'.index/share');
-Route::post('cancel_share', 'index/'.$v.'.index/cancel_share');
-Route::get('sharings', 'index/'.$v.'.index/sharings');
-Route::get('s/:name', 'index/'.$v.'.Download/index');
-Route::rule('download/:name', 'index/'.$v.'.Download/download');
+Route::get('api/files', 'index/'.$v.'.index/files');
+Route::post('api/files', 'index/'.$v.'.index/upload');
+Route::get('api/files/:id', 'index/'.$v.'.index/filesInfo')->pattern(['id' => '\\w{8}(-\\w{4}){3}-\\w{12}?']);
+Route::get('api/me', 'index/'.$v.'.index/me');
+Route::post('api/batch_delete', 'index/'.$v.'.index/batch_delete');
+Route::post('api/move_folder', 'index/'.$v.'.index/moveFolder');
+Route::post('api/batch_update', 'index/'.$v.'.index/batch_update');
+Route::post('api/share', 'index/'.$v.'.index/share');
+Route::post('api/cancel_share', 'index/'.$v.'.index/cancel_share');
+Route::get('api/sharings', 'index/'.$v.'.index/sharings');
+Route::get('api/s/:name', 'index/'.$v.'.Download/index');
+Route::rule('api/download/:name', 'index/'.$v.'.Download/download');
+Route::post('api/oss_qianming', 'index/'.$v.'.index/oss_qianming');
 return [
 ];
