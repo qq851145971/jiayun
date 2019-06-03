@@ -6,9 +6,9 @@
  * Time: 11:03
  */
 return [
-    'oss_custom_host'=>'',
-    'app_code'=>'',
-    'tonken_key'=>'',
+    'oss_custom_host'=> '',
+    'app_code'=> '',
+    'token_key'=> '',
     'aliyun_oss' => [
         'KeyId'      => '',  //您的Access Key ID
         'KeySecret'  => '',  //您的Access Key Secret
@@ -16,10 +16,9 @@ return [
         'Bucket'     => '',  //Bucket名称
     ],
     'redis'=>[
-        'hostname'        => '127.0.0.1',
-        'password'        => '',
-        'hostport'        => '6379',
-        'out_time'        =>120,
-        'time_out'        =>3
+        'hostName'        => '127.0.0.1',
+        'passWord'        => '',
+        'hostPort'        => '6379',
+        'outTime'        =>120
     ]
 ];
