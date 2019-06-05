@@ -46,16 +46,15 @@ class Base extends Controller
             $info = JWT::decode($headers['Authorization'],$key,["HS512"]); //解密jwt
             $this->headers = $headers;
             $this->member_id=$info->member->id;
-            $this->client_id=$info->client->id;
         }catch (\Exception $e) {
             throw new ApiException('token验证失败', 400);
         }
-        dump($info);
-        exit();
+
         return $this->authInfo($info->client->id);
     }
     public function authInfo($client_id){
-        $app=Db::table('clients')->where('id',$client_id)->field('code')->find();
+        $app=Db::table('clients')->where('app_id',$client_id)->field('code,id')->find();
+        $this->client_id=$app['id'];
         return $this->client_name=$app['code'];
     }
     public function jwt(){
