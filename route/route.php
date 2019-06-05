@@ -49,8 +49,8 @@ Route::post('api/batch_update', 'index/'.$v.'.index/batch_update');
 Route::post('api/share', 'index/'.$v.'.index/share');
 Route::post('api/cancel_share', 'index/'.$v.'.index/cancel_share');
 Route::get('api/sharings', 'index/'.$v.'.index/sharings');
-Route::get('api/s/:name', 'index/'.$v.'.Download/index');
-Route::rule('api/download/:name', 'index/'.$v.'.Download/download');
-Route::post('api/oss_qianming', 'index/'.$v.'.index/oss_qianming');
+Route::get('s/:name', 'index/'.$v.'.Download/index');
+Route::rule('download/:name', 'index/'.$v.'.Download/download');
+Route::post('oss_qianming', 'index/'.$v.'.index/oss_qianming');
 return [
 ];
