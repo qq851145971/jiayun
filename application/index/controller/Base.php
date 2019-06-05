@@ -6,7 +6,7 @@
  * Time: 17:58
  */
 
-namespace app\index\controller\v1;
+namespace app\index\controller;
 
 use think\Controller;
 use app\common\controller\ApiException;
@@ -41,7 +41,7 @@ class Base extends Controller
         if(empty($headers['Authorization'])) {
             throw new ApiException('token不存在', 400);
         }
-        $key = config('env.tonken_key');
+        $key = config('env.token_key');
         try{
             $info = JWT::decode($headers['Authorization'],$key,["HS512"]); //解密jwt
             $this->headers = $headers;
@@ -50,6 +50,8 @@ class Base extends Controller
         }catch (\Exception $e) {
             throw new ApiException('token验证失败', 400);
         }
+        dump($info);
+        exit();
         return $this->authInfo($info->client->id);
     }
     public function authInfo($client_id){
@@ -114,6 +116,95 @@ class Base extends Controller
             $output .= $chars[mt_rand(0, $charsLen)];
         }
         return $output;
+    }
+
+    /**
+     * 递归创建目录
+     * User: 陈大剩
+     * @param string $folder
+     * @param int $parent_id
+     * @return \think\response\Json|void
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\ModelNotFoundException
+     * @throws \think\exception\DbException
+     */
+    public function directory($folder="/a",$parent_id=0){
+        if (empty($folder)){
+            return $parent_id;
+        }
+        $folderAry=explode("/",$folder);
+        $fist=array_shift($folderAry);
+        $newdir=implode('/', $folderAry);
+        if (empty($fist)){
+            $findFolder=Db::table('file_folders')->whereNull('deleted_at')->where('member_id',$this->member_id)->where('parent_id',0)->where('name',$this->member_id)->find();
+        }else{
+            $findFolder=Db::table('file_folders')->whereNull('deleted_at')->where('member_id',$this->member_id)->where('name',$fist)->where('parent_id',$parent_id)->find();
+        }
+        if (empty($fist)){
+            if (empty($findFolder)){
+                $data=[
+                    'id'=>guid(),
+                    'parent_id'=>0,
+                    'member_id'=>$this->member_id,
+                    'name'=>$this->member_id,
+                    'created_at'=>date('Y-m-d H:i:s.u'),
+                    'updated_at'=>date('Y-m-d H:i:s.u'),
+                ];
+                try{
+                    $res=Db::table('file_folders')->insert($data);
+                    return $this->directory($newdir,$data['id']);
+                }catch (\Exception $e) {
+                    return show($this->client_name,"100.0",'',[$e->getMessage()],[],400);
+                }
+            }else{
+                return $this->directory($newdir,$findFolder['id']);
+            }
+        }else{
+            if (empty($findFolder)){
+                $data=[
+                    'id'=>guid(),
+                    'parent_id'=>$parent_id,
+                    'member_id'=>$this->member_id,
+                    'name'=>$fist,
+                    'created_at'=>date('Y-m-d H:i:s.u'),
+                    'updated_at'=>date('Y-m-d H:i:s.u'),
+                ];
+                try{
+                    $res=Db::table('file_folders')->insert($data);
+                    return $this->directory($newdir,$data['id']);
+                    if (empty(end($folderAry))){
+                        return $data['id'];
+                    }
+                }catch (\Exception $e) {
+                    return show($this->client_name,"100.0",'',[$e->getMessage()],[],400);
+                }
+            }else{
+                return $this->directory($newdir,$findFolder['id']);
+            }
+        }
+    }
+    /**
+     * 去掉前后斜杠
+     * User: 陈大剩
+     * @param $str
+     * @return string
+     */
+    public function screen($str){
+        if (!empty($str)){
+            if ($str!=="/"){
+                $newFolder=explode("/",$str);
+                if (end($newFolder)==""){
+                    array_pop($newFolder);
+                    $str=implode("/",$newFolder);
+                }
+                if ($newFolder[0]!==""){
+                    $str="/".$str;
+                }
+            }
+        }else{
+            $str="/";
+        }
+        return $str;
     }
     /**
      * 空方法
