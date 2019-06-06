@@ -31,7 +31,6 @@ class Base extends Controller
         parent::initialize();
         return $this->checkRequestAuth();
     }
-
     public function checkRequestAuth(){
         $headers = request()->header();
         if (!isset($headers['Authorization']) && !isset($headers['authorization'])){
@@ -41,9 +40,16 @@ class Base extends Controller
         if(empty($headers['Authorization'])) {
             throw new ApiException('token不存在', 400);
         }
+        $Authorization=explode(" ",$headers['Authorization']);
+        $token="";
+        if(count($Authorization)==2){
+            $token=$Authorization[1];
+        }else{
+            $token=$Authorization[0];
+        }
         $key = config('env.token_key');
         try{
-            $info = JWT::decode($headers['Authorization'],$key,["HS512"]); //解密jwt
+            $info = JWT::decode($token,$key,["HS512"]); //解密jwt
             $this->headers = $headers;
             $this->member_id=$info->member->id;
         }catch (\Exception $e) {
