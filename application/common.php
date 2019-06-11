@@ -37,7 +37,7 @@ function check($jwt){
  */
 function show($target_app, $code = "0,0",$msg ="",$errors = [],$data=[] , $httpCode=200) {
 
-    $data = [
+    $tot = [
         'target_app' => $target_app,
         'code' => $code,
         'msg' => $msg,
@@ -45,7 +45,7 @@ function show($target_app, $code = "0,0",$msg ="",$errors = [],$data=[] , $httpC
         'data'=>$data
     ];
 
-    return json($data, $httpCode);
+    return json($tot, $httpCode);
 }
 
 /**
