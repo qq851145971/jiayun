@@ -28,6 +28,7 @@ class Base extends Controller
     public function initialize()
     {
         parent::initialize();
+        error_reporting(E_ERROR);
 //        if (Config('app_debug') !== true) {
 //
 //        }
