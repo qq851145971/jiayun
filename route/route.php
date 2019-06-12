@@ -39,7 +39,7 @@ if (empty($version)){
 /**
  * 路由开始
  */
-
+Route::get('/', 'index/MyError/kong');
 Route::get('api/files', 'index/'.$v.'.index/files');
 Route::get('api/files/:id', 'index/'.$v.'.index/filesInfo')->pattern(['id' => '\\w{8}(-\\w{4}){3}-\\w{12}?']);
 Route::get('api/members/me', 'index/'.$v.'.index/me');

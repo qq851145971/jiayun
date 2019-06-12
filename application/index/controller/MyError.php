@@ -15,7 +15,9 @@ class MyError
         $msg = $request->controller();
         return $this->msg($msg);
     }
-
+    public function kong(){
+        return ;
+    }
     protected function msg($name)
     {
         return errorMsg($name,404);

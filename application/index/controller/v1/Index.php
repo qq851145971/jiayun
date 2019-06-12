@@ -21,7 +21,9 @@ class Index extends Base
     private $getFilename = "";
     private $filesId = [];
     private $filesList = [];
-
+    public function index(){
+        return ;
+    }
     /**
      * 获取文件列表
      * User: 陈大剩
