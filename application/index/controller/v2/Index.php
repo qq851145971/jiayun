@@ -14,7 +14,42 @@ use app\index\controller\Base;
 class Index extends Base
 {
     private $filename = "";
-
+    public function files(){
+        $get = input('get.');
+        $time=0;
+        if (isset($get['last_refresh_time'])){
+            if (empty($get['last_refresh_time'])){
+                $time=0;
+            }else{
+                $time=$get['last_refresh_time'];
+            }
+        }else{
+            $time=0;
+        }
+        if (strlen($time)==10){
+            $time=$time."000";
+        }
+        $data=[];
+        $res=Db::table('data_files')->where('client_id', $this->client_id)->where('member_id', $this->member_id)->whereNull('deleted_at')->where('last_modified_time','>=',$time)->select();
+        foreach ($res as $v){
+            $access_type = $v['access_type'] == 0 ? 'private' : 'public';
+            $data[]=[
+                'id'=>$v['id'],
+                'access_type'=>$access_type,
+                'filename'=>$v['filename'],
+                'size'=>round($v['size'],3),
+                'download_link'=>Config('env.oss_custom_host') . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $v['id'] . "?" . $v['download_url'],
+                'thumbnail'=>"",
+                'content_type'=>$v['content_type'],
+                'folder'=>$v['folder'],
+                'created_at'=>strtotime($v['created_at']),
+                'updated_at'=>strtotime($v['updated_at']),
+                'last_modified_time'=>$v['last_modified_time'],
+                'is_deleted'=>empty($v['deleted_at']) ? 'false' : 'true',
+            ];
+        }
+        return show($this->client_name, $code = "0,0", $msg = "", $errors = [], $data);
+    }
     public function upload()
     {
         $post = input('post.');
