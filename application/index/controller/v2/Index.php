@@ -75,8 +75,15 @@ class Index extends Base
             'last_modified_time' => get13TimeStamp()
         ];
         $res=Db::table('data_files')->insert($data);
-        dump($ra);
-        dump($res);
+        if ($res) {
+            $tot = [
+                'id' => $data['id'],
+                'authorize' => $ra
+            ];
+            return show($this->client_name, $code = "0,0", $msg = "", [], $tot);
+        }else{
+            
+        }
     }
 
     public function gmt_iso8601($time)

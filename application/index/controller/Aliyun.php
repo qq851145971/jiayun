@@ -10,6 +10,8 @@ namespace app\index\controller;
 
 use think\Controller;
 use think\Db;
+use app\common\controller\Mime;
+
 class Aliyun extends Controller
 {
     public function index()
@@ -55,76 +57,115 @@ class Aliyun extends Controller
         if ($ok == 1) {
             header("Content-Type: application/json");
             $params = input('param.');
-            $keyAry=explode('/',$params['filename']);
-            $uuid=end($keyAry);
-            try{
-                $files=Db::table('data_files')->where('id',$uuid)->whereNull('deleted_at')->find();
-            }catch (\Exception $e){
+            $keyAry = explode('/', $params['filename']);
+            $uuid = end($keyAry);
+            try {
+                $files = Db::table('data_files')->where('id', $uuid)->whereNull('deleted_at')->find();
+            } catch (\Exception $e) {
                 $errors = [
                     'type' => '300,0',
-                    'msg' => "DataFile Cannot Be Find, ID:". $uuid .",object:". $params['filename']
+                    'msg' => "DataFile Cannot Be Find, ID:" . $uuid . ",object:" . $params['filename']
                 ];
                 $data = [
                     'target_app' => null,
                     'code' => $errors['type'],
                     'msg' => $errors['msg'],
-                    'errors'=>$errors,
-                    'data'=>[]
+                    'errors' => $errors,
+                    'data' => []
                 ];
                 echo json_encode($data);
             }
-            if (!empty($files)){
+            if (!empty($files)) {
+                $Mime = new Mime();
                 $options = array(
-                    'headers'=> array(
-                        'Content-Disposition' => 'attachment; filename="'.$files['filename'].'"',
-                        'x-oss-meta-self-define-title' => 'user define meta info',
+                    'headers' => array(
+                        'Content-Disposition' => 'attachment; filename="' . $files['filename'] . '"',
+                        'x-oss-meta-self-define-title' => $params['mimeType'],
                     ));
-                try{
-                    $content = file_get_contents(__FILE__);
-                    $ossClient = $this->new_oss();
-                    $res = $ossClient->putObject(Config('env.aliyun_oss.KeyId'), $params['filename'], $content, $options);
-                    $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.KeyId'), $params['filename'], 3153600000);
+                try {
+                    $ossClient = new \OSS\OssClient(Config('env.aliyun_oss.KeyId'), Config('env.aliyun_oss.KeySecret'), Config('env.aliyun_oss.Endpoint'), false);
+                    $res = $ossClient->copyObject(Config('env.aliyun_oss.Bucket'), $params['filename'], Config('env.aliyun_oss.Bucket'), $params['filename'], $options);
+                    $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.Bucket'), $params['filename'], 315360000);
                     $res['signedUrl'] = htmlspecialchars_decode($signedUrl);
                     list($download_head, $download_url) = explode("?", $res['signedUrl']);
-                } catch(\Exception $e) {
-                    return errorMsg('101', $e->getMessage(), 400);
+                } catch (\Exception $e) {
+                    $errors = [
+                        'type' => '300,2',
+                        'msg' => "fail to upload "
+                    ];
+                    $data = [
+                        'target_app' => null,
+                        'code' => $errors['type'],
+                        'msg' => $errors['msg'],
+                        'errors' => $errors,
+                        'data' => []
+                    ];
+                    echo json_encode($data);
                 }
-                $resInfo=Db::table('data_files')->where('id',$uuid)->whereNull('deleted_at')->update(['etag'=>$params['etag'],'size'=>$params['size']/1024,'content_type'=>$res['oss-requestheaders']['Content-Type'],'download_url'=>$download_url]);
-                if ($resInfo){
+                $ext = strtolower($files['filename']);
+                $extAry=explode(".",$ext);
+                if (count($extAry)==1){
+                    $extstr=$extAry[0];
+                }else{
+                    $extstr=$extAry[1];
+                }
+                $resInfo = Db::table('data_files')->where('id', $uuid)->whereNull('deleted_at')->update(['etag' => $params['etag'], 'size' => $params['size'] / 1024, 'content_type' => $params['mimeType'],'download_url' => $download_url,'suffix'=>$extstr]);
+                if ($resInfo) {
                     $access_type = $files['access_type'] == 0 ? 'private' : 'public';
-                    $tot=[
-                        'id'=>$uuid,
-                        'access_type'=>$access_type,
-                        'filename'=>$files['filename'],
-                        'size'=>$params['size']/1024,
-                        'download_link'=>Config('env.oss_custom_host') . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $data['id'] . "?" . $data['download_url'],
-                        'thumbnail'=>"",
-                        'content_type'=>$res['oss-requestheaders']['Content-Type'],
-                        'folder'=>$files['folder'],
-                        'created_at'=>strtotime($data['updated_at']),
-                        'updated_at'=>strtotime($data['updated_at']),
-                        'last_modified_time'=>$files['last_modified_time'],
-                        'is_deleted' => empty($data['deleted_at']) ? 'false' : 'true'
+                    $tot = [
+                        'id' => $uuid,
+                        'access_type' => $access_type,
+                        'filename' => $files['filename'],
+                        'size' => $params['size'] / 1024,
+                        'download_link' => Config('env.oss_custom_host') . "/" . $params['filename'] . "?" . $download_url,
+                        'thumbnail' => "",
+                        'content_type' => $params['mimeType'],
+                        'folder' => $files['folder'],
+                        'created_at' => strtotime($files['updated_at']),
+                        'updated_at' => strtotime($files['updated_at']),
+                        'last_modified_time' => $files['last_modified_time'],
+                        'is_deleted' => empty($files['deleted_at']) ? 'false' : 'true'
                     ];
                     $data = [
                         'target_app' => null,
                         'code' => '0,0',
                         'msg' => '',
-                        'errors'=>[],
-                        'data'=>$tot
+                        'errors' => [],
+                        'data' => $tot
+                    ];
+                    echo json_encode($data);
+                } else {
+                    $errors = [
+                        'type' => '300,3',
+                        'msg' => "Insert the failure"
+                    ];
+                    $data = [
+                        'target_app' => null,
+                        'code' => $errors['type'],
+                        'msg' => $errors['msg'],
+                        'errors' => $errors,
+                        'data' => []
                     ];
                     echo json_encode($data);
                 }
+            } else {
+                $errors = [
+                    'type' => '300,4',
+                    'msg' => "The file is empty"
+                ];
+                $data = [
+                    'target_app' => null,
+                    'code' => $errors['type'],
+                    'msg' => $errors['msg'],
+                    'errors' => $errors,
+                    'data' => []
+                ];
+                echo json_encode($data);
             }
 
         } else {
             //header("http/1.1 403 Forbidden");
             exit();
         }
-    }
-    private function new_oss()
-    {
-        $oss = new \OSS\OssClient(Config('env.aliyun_oss.KeyId'), Config('env.aliyun_oss.KeySecret'), Config('env.aliyun_oss.Endpoint'), false);
-        return $oss;
     }
 }

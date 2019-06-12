@@ -180,6 +180,7 @@ class Mime
         'xht' => 'application/xhtml+xml',
         'xhtml' => 'application/xhtml+xml',
         'xls' => 'application/vnd.ms-excel',
+        'xlsx' => 'application/vnd.ms-excel',
         'xml' => 'application/xml',
         'xpm' => 'image/x-xpixmap',
         'xsl' => 'application/xml',
