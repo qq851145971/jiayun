@@ -52,7 +52,7 @@ Route::get('api/sharings', 'index/'.$v.'.index/sharings');
 Route::get('s/:name', 'index/'.$v.'.Download/index');
 Route::rule('download/:name', 'index/'.$v.'.Download/download');
 Route::post('oss_qianming', 'index/'.$v.'.index/oss_qianming');
-Route::post('aliyun', 'index/Aliyun/index');
+Route::post('api/files/post_callback', 'index/Aliyun/index');
 Route::post('api/files', 'index/'.$v.'.index/upload');
 return [
 ];

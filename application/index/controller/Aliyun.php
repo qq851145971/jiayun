@@ -62,6 +62,24 @@ class Aliyun extends Controller
             try {
                 $files = Db::table('data_files')->where('id', $uuid)->whereNull('deleted_at')->find();
             } catch (\Exception $e) {
+                try {
+                    $ossClient = new \OSS\OssClient(Config('env.aliyun_oss.KeyId'), Config('env.aliyun_oss.KeySecret'), Config('env.aliyun_oss.Endpoint'), false);
+                    $ossClient->deleteObject(Config('env.aliyun_oss.Bucket'), $params['filename']);
+                } catch (\Exception $e) {
+                    $errors = [
+                        'type' => '300,9',
+                        'msg' => "DataFile Cannot Be Find, ID:" . $uuid . ",object:" . $params['filename']
+                    ];
+                    $data = [
+                        'target_app' => null,
+                        'code' => $errors['type'],
+                        'msg' => $errors['msg'],
+                        'errors' => $errors,
+                        'data' => []
+                    ];
+                    echo json_encode($data);
+                    return ;
+                }
                 $errors = [
                     'type' => '300,0',
                     'msg' => "DataFile Cannot Be Find, ID:" . $uuid . ",object:" . $params['filename']
@@ -74,13 +92,19 @@ class Aliyun extends Controller
                     'data' => []
                 ];
                 echo json_encode($data);
+                return ;
             }
             if (!empty($files)) {
                 $Mime = new Mime();
+                if ($params['mimeType']=="application/octet-stream"){
+                    $define=$Mime()->get_mimetype($files['filename']);
+                }else{
+                    $define=$params['mimeType'];
+                }
                 $options = array(
                     'headers' => array(
                         'Content-Disposition' => 'attachment; filename="' . $files['filename'] . '"',
-                        'x-oss-meta-self-define-title' => $params['mimeType'],
+                        'x-oss-meta-self-define-title' => $define,
                     ));
                 try {
                     $ossClient = new \OSS\OssClient(Config('env.aliyun_oss.KeyId'), Config('env.aliyun_oss.KeySecret'), Config('env.aliyun_oss.Endpoint'), false);
@@ -101,6 +125,7 @@ class Aliyun extends Controller
                         'data' => []
                     ];
                     echo json_encode($data);
+                    return ;
                 }
                 $ext = strtolower($files['filename']);
                 $extAry=explode(".",$ext);
@@ -134,6 +159,7 @@ class Aliyun extends Controller
                         'data' => $tot
                     ];
                     echo json_encode($data);
+                    return ;
                 } else {
                     $errors = [
                         'type' => '300,3',
@@ -147,6 +173,7 @@ class Aliyun extends Controller
                         'data' => []
                     ];
                     echo json_encode($data);
+                    return ;
                 }
             } else {
                 $errors = [
@@ -161,6 +188,7 @@ class Aliyun extends Controller
                     'data' => []
                 ];
                 echo json_encode($data);
+                return ;
             }
 
         } else {

@@ -193,6 +193,8 @@ class Mime
         'dps' => 'application/ksdps',
         'et' => 'application/kset',
         'azw3' => 'application/octet-stream',
+        'docx' => 'application/msword',
+
     );
 
     /**
@@ -204,11 +206,11 @@ class Mime
     public static function get_mimetype($ext)
     {
         $ext = strtolower($ext);
-        $extAry=explode(".",$ext);
-        if (count($extAry)==1){
-            $extstr=$extAry[0];
-        }else{
-            $extstr=$extAry[1];
+        $extAry = explode(".", $ext);
+        if (count($extAry) == 1) {
+            $extstr = $extAry[0];
+        } else {
+            $extstr = $extAry[1];
         }
         return isset(self::$mime_types[$extstr]) ? self::$mime_types[$extstr] : 'application/octet-stream';
     }

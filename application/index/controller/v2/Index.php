@@ -13,30 +13,14 @@ use app\index\controller\Base;
 
 class Index extends Base
 {
-    private $filename="";
+    private $filename = "";
+
     public function upload()
     {
         $post = input('post.');
         if (empty($post)) {
             $errors = [
                 'type' => '301,1',
-                'msg' => "Invalid client"
-            ];
-            return show("null", $errors['type'], $errors['msg'], $errors);
-        }
-        if (isset($post['filename'])) {
-            if (empty($post['filename'])) {
-                $errors = [
-                    'type' => '301,2',
-                    'msg' => "Invalid client"
-                ];
-                return show("null", $errors['type'], $errors['msg'], $errors);
-            }else{
-                $this->filename=$post['filename'];
-            }
-        } else {
-            $errors = [
-                'type' => '301,2',
                 'msg' => "Invalid client"
             ];
             return show("null", $errors['type'], $errors['msg'], $errors);
@@ -54,35 +38,124 @@ class Index extends Base
                     'msg' => "Invalid client"
                 ];
                 return show("null", $errors['type'], $errors['msg'], $errors);
+            }else{
+                $this->client_id=$appName['id'];
+                $this->client_name=$post['target_app'];
             }
         }
         if (!isset($post['folder'])) $post['folder'] = "";
         $post['folder'] = $this->screen($post['folder']);
-        $ra = $this->oss_qianming();
-        $folder_id = $this->directory($post['folder']);
-        $uuid = guid();
-        $data = [
-            'id' => $uuid,
-            'client_id' => $this->client_id,
-            'member_id' => $this->member_id,
-            'access_type' => 0,
-            'filename' => $post['filename'],
-            'folder' => $post['folder'],
-            'created_at' => date("Y-m-d H:i:s"),
-            'updated_at' => date("Y-m-d H:i:s"),
-            'file' => $ra['dir'],
-            'folder_id' => $folder_id,
-            'last_modified_time' => get13TimeStamp()
-        ];
-        $res=Db::table('data_files')->insert($data);
-        if ($res) {
-            $tot = [
-                'id' => $data['id'],
-                'authorize' => $ra
-            ];
-            return show($this->client_name, $code = "0,0", $msg = "", [], $tot);
+        if (isset($post['uuid'])){
+            $oneFiles = Db::table('data_files')->whereNull('deleted_at')->where('id', $post['uuid'])->find();
+            if (empty($oneFiles)){
+                $errors = [
+                    'type' => '100,4',
+                    'msg' => "uuid empty"
+                ];
+                return show("null", $errors['type'], $errors['msg'], $errors);
+            }else{
+                $fileName = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $post['uuid'];
+                $id = $this->directory($post['folder']);
+                if (isset($post['modify_time'])) {
+                    $edit = [
+                        'folder' => $post['folder'],
+                        'folder_id' => $id,
+                        'last_modified_time' => $post['modify_time']
+                    ];
+                } else {
+                    $edit = [
+                        'folder' => $post['folder'],
+                        'folder_id' => $id,
+                    ];
+                }
+                if (isset($post['filename'])) {
+                    $ossClient = new \OSS\OssClient(Config('env.aliyun_oss.KeyId'), Config('env.aliyun_oss.KeySecret'), Config('env.aliyun_oss.Endpoint'), false);
+                    $options = array(
+                        'headers' => array(
+                            'Content-Disposition' => 'attachment; filename="' . $post['filename'] . '"',
+                        ));
+                    try {
+                        $ossClient->copyObject(Config('env.aliyun_oss.Bucket'), $fileName, Config('env.aliyun_oss.Bucket'), $fileName, $options);
+                        $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.Bucket'),$fileName, 315360000);
+                        $res['signedUrl'] = htmlspecialchars_decode($signedUrl);
+                        list($download_head, $download_url) = explode("?", $res['signedUrl']);
+                    } catch (\Exception $e) {
+                        $errors = [
+                            'type' => '100,3',
+                            'msg' => "Invalid client"
+                        ];
+                        return show("null", $errors['type'], $errors['msg'], $errors);
+                    }
+                    $edit['download_url']=$download_url;
+                    $edit['filename']=$post['filename'];
+                    $ra = $this->oss_qianming();
+                    $res = Db::table('data_files')->where('id',$post['uuid'])->update($edit);
+                    if ($res){
+                        $tot = [
+                            'id' => $post['uuid'],
+                            'authorize' => $ra
+                        ];
+                        return show($this->client_name, $code = "0,0", $msg = "", [], $tot);
+                    }
+                }else{
+                    $ra = $this->oss_qianming();
+                    $res = Db::table('data_files')->where('id',$post['uuid'])->update($edit);
+                    if ($res){
+                        $tot = [
+                            'id' => $post['uuid'],
+                            'authorize' => $ra
+                        ];
+                        return show($this->client_name, $code = "0,0", $msg = "", [], $tot);
+                    }
+                }
+            }
         }else{
-            
+            if (isset($post['filename'])) {
+                if (empty($post['filename'])) {
+                    $errors = [
+                        'type' => '301,2',
+                        'msg' => "Invalid client"
+                    ];
+                    return show("null", $errors['type'], $errors['msg'], $errors);
+                } else {
+                    $this->filename = $post['filename'];
+                }
+            } else {
+                $errors = [
+                    'type' => '301,2',
+                    'msg' => "Invalid client"
+                ];
+                return show("null", $errors['type'], $errors['msg'], $errors);
+            }
+            $ra = $this->oss_qianming();
+            $folder_id = $this->directory($post['folder']);
+            $uuid = guid();
+            $data = [
+                'id' => $uuid,
+                'client_id' => $this->client_id,
+                'member_id' => $this->member_id,
+                'access_type' => 0,
+                'filename' => $post['filename'],
+                'folder' => $post['folder'],
+                'created_at' => date("Y-m-d H:i:s"),
+                'updated_at' => date("Y-m-d H:i:s"),
+                'file' => $ra['dir'],
+                'folder_id' => $folder_id,
+                'last_modified_time' => get13TimeStamp()
+            ];
+            if (isset($post['modify_time'])) {
+                $data['last_modified_time']=$post['modify_time'];
+            }
+            $res = Db::table('data_files')->insert($data);
+            if ($res) {
+                $tot = [
+                    'id' => $data['id'],
+                    'authorize' => $ra
+                ];
+                return show($this->client_name, $code = "0,0", $msg = "", [], $tot);
+            } else {
+
+            }
         }
     }
 
@@ -102,7 +175,7 @@ class Index extends Base
         $key = config('env.aliyun_oss.KeySecret');
         $host = config('env.oss_custom_host');
         // $callbackUrl为上传回调服务器的URL，请将下面的IP和Port配置为您自己的真实URL信息。
-        $callbackUrl = config('env.callback_url')."/Aliyun";
+        $callbackUrl = config('env.callback_url') . "/api/files/post_callback";
         $dir = "private" . "/" . $this->member_id . "/" . $this->client_name;          // 用户上传文件时指定的前缀。
         $callback_param = array('callbackUrl' => $callbackUrl,
             'callbackBody' => 'filename=${object}&size=${size}&mimeType=${mimeType}&height=${imageInfo.height}&width=${imageInfo.width}&etag=${etag}',
