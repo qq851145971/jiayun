@@ -168,6 +168,7 @@ class Index extends Base
                 $info = $file->move('./uploads', '');
             }
         }
+
         if (isset($post['uuid']) && empty($file)) {
             $fileName = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $post['uuid'];
             if (isset($post['target_app'])) {
@@ -247,7 +248,84 @@ class Index extends Base
                 } else {
                     $uuid = guid();
                 }
-
+                $str =strtoupper(md5(file_get_contents($info->getPathname())));
+                $findFiles = Db::table('data_files')
+                    ->whereNull('deleted_at')
+                    ->whereNotNull('size')
+                    ->where('member_id', $this->member_id)
+                    ->where('client_id', $this->client_id)
+                    ->where('etag',$str)
+                    ->where('folder', $post['folder'])
+                    ->where('suffix', $info->getExtension())
+                    ->select();
+                if (count($findFiles) >= 1){
+                    $fileName = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $findFiles[0]['id'];
+                    if (isset($post['target_app'])) {
+                        $toFileName = "private" . $this->member_id . "/" . $post['target_app'] . "/" . $post['uuid'];
+                        $client_id = $appName['id'];
+                    } else {
+                        $client_id = $this->client_id;
+                        $toFileName = $fileName;
+                    }
+                    $id = $this->directory($post['folder']);
+                    if (isset($post['filename'])) {
+                        $name = $post['filename'];
+                        $ossClient = new \OSS\OssClient(Config('env.aliyun_oss.KeyId'), Config('env.aliyun_oss.KeySecret'), Config('env.aliyun_oss.Endpoint'), false);
+                        $options = array(
+                            'headers' => array(
+                                'Content-Disposition' => 'attachment; filename="' . $name . '"',
+                            ));
+                        try {
+                            $ossClient->copyObject(Config('env.aliyun_oss.Bucket'), $fileName, Config('env.aliyun_oss.Bucket'), $fileName, $options);
+                            $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.Bucket'),$fileName, 315360000);
+                            $res['signedUrl'] = htmlspecialchars_decode($signedUrl);
+                            list($download_head, $download_url) = explode("?", $res['signedUrl']);
+                        } catch (\Exception $e) {
+                            $errors = [
+                                'type' => '100,3',
+                                'msg' => "Invalid client"
+                            ];
+                            return show("null", $errors['type'], $errors['msg'], $errors);
+                        }
+                        $edit['download_url']=$download_url;
+                    } else {
+                        $name = $findFiles[0]['filename'];
+                    }
+                    if (isset($post['modify_time'])) {
+                        $edit = [
+                            'folder' => $post['folder'],
+                            'folder_id' => $id,
+                            'filename'=>$name,
+                            'client_id' => $client_id,
+                            'last_modified_time' => $post['modify_time']
+                        ];
+                    } else {
+                        $edit = [
+                            'folder' => $post['folder'],
+                            'folder_id' => $id,
+                            'filename'=>$name,
+                            'client_id' => $client_id,
+                        ];
+                    }
+                    $access_type = $oneFiles['access_type'] == 0 ? 'private' : 'public';
+                    $filesAll[] = [
+                        'id' => $findFiles[0]['id'],
+                        'access_type' => $access_type,
+                        'filename' => $name,
+                        'size' => $findFiles[0]['size'],
+                        'download_link' => Config('env.oss_custom_host') . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $findFiles[0]['id'] . "?" . $findFiles[0]['download_url'],
+                        'thumbnail' => "",
+                        'content_type' => $findFiles[0]['content_type'],
+                        'folder' => $findFiles[0]['folder'],
+                        'created_at' => strtotime($findFiles[0]['created_at']),
+                        'updated_at' => strtotime($findFiles[0]['updated_at']),
+                        'last_modified_time' => $findFiles[0]['last_modified_time'],
+                        'is_deleted' => empty($findFiles[0]['deleted_at']) ? 'false' : 'true',
+                        'mission_result' => "",
+                    ];
+                    $resFiles = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('id', $findFiles[0]['id'])->update($edit);
+                    return show($this->client_name, $code = "0,0", $msg = "", $errors = [], $filesAll);
+                }
                 $this->getFilename = $getFilename;
                 if (isset($post['filename'])) {
                     $this->getFilename = $post['filename'];
@@ -255,15 +333,6 @@ class Index extends Base
                 $fileName = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $uuid;
                 $resInfo = $this->uploadFile(Config('env.aliyun_oss.Bucket'), $fileName, $getPathname);
                 list($download_head, $download_url) = explode("?", $resInfo['signedUrl']);
-                $findFiles = Db::table('data_files')
-                    ->whereNull('deleted_at')
-                    ->whereNotNull('size')
-                    ->where('member_id', $this->member_id)
-                    ->where('client_id', $this->client_id)
-                    ->where('etag', $this->etag($resInfo['etag']))
-                    ->where('folder', $post['folder'])
-                    ->where('suffix', $getExtension)
-                    ->select();
                 $id = $this->directory($post['folder']);
                 if (empty($id)) {
                     throw new ApiException("Internal Server MyError", 500);

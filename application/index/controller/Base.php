@@ -39,11 +39,11 @@ class Base extends Controller
     {
         $headers = request()->header();
         if (!isset($headers['Authorization']) && !isset($headers['authorization'])) {
-            throw new ApiException('token不存在', 400);
+            throw new ApiException('token不存在', 401);
         }
         if (!isset($headers['Authorization'])) $headers['Authorization'] = $headers['authorization'];
         if (empty($headers['Authorization'])) {
-            throw new ApiException('token不存在', 400);
+            throw new ApiException('token不存在', 401);
         }
         $Authorization = explode(" ", $headers['Authorization']);
         $token = "";
@@ -58,7 +58,7 @@ class Base extends Controller
             $this->headers = $headers;
             $this->member_id = $info->member->id;
         } catch (\Exception $e) {
-            throw new ApiException('token验证失败', 400);
+            throw new ApiException('token验证失败', 401);
         }
         return $this->authInfo($info->client->id);
     }
