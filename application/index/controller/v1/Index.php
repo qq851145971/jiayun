@@ -52,16 +52,26 @@ class Index extends Base
             if (strlen($get['last_refresh_time']) < 10) throw new ApiException("请传入有效时间戳", 500);
             $where[] = ["updated_at", ">=", date("Y-m-d H:i:s", $get['last_refresh_time'])];
         }
-        if (isset($get['statistic_folders'])) {
-            $get['statistic_folders'] = intval($get['statistic_folders']);
-        }
-        foreach ($foldersAry as $k => $v) {
-            if ($v['name'] == 'Converted') {
-                $statistic_folders[] = $v;
+        if (isset($get['include_statistic'])) {
+            $get['include_statistic'] = intval($get['include_statistic']);
+            if ($get['include_statistic']==1){
+                foreach ($foldersAry as $k => $v) {
+                    if ($v['name'] == 'Converted') {
+                        $statistic_folders[] = $v;
+                    }
+                }
+            }
+            if (empty($statistic_folders)){
+                $statistic_folders[0] = [
+                    'id'=>null,
+                    'name'=>'Converted',
+                    'files_count'=>0
+                ];
             }
         }
         $files = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('client_id', $this->client_id)->where('member_id', $this->member_id)->where('folder', $get['folder'])->where($where)->limit($get['per'])->page($get['page'])->select();
         $filesCount = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('client_id', $this->client_id)->where('member_id', $this->member_id)->where('folder', $get['folder'])->count();
+        $file_folders = Db::table('file_folders')->whereNull('deleted_at')->where('member_id', $this->member_id)->where('parent_id', $get['folder'])->count();
         $countFiles = count($files);
         $filesAll = [];
         foreach ($files as $k => $v) {
@@ -82,14 +92,14 @@ class Index extends Base
                 'mission_result' => null,
             ];
         }
-        if (isset($get['statistic_folders'])) {
-            $get['statistic_folders'] = intval($get['statistic_folders']);
-            if ($get['statistic_folders'] == 1 && $get['folder'] = "/") {
+        if (isset($get['include_statistic'])) {
+            $get['include_statistic'] = intval($get['include_statistic']);
+            if ($get['include_statistic'] == 1 && $get['folder'] = "/") {
                 $findFolder = Db::table('file_folders')->whereNull('deleted_at')->where('member_id', $this->member_id)->where('parent_id', 0)->where('name', $this->member_id)->find();
                 $statistic_folders[] = [
                     'id' => $findFolder['id'],
                     'name' => "home",
-                    'files_count' => $filesCount + count($filesAll)
+                    'files_count' => $filesCount + $file_folders
                 ];
                 $data = [
                     'folder' => $get['folder'],
@@ -98,6 +108,18 @@ class Index extends Base
                     'page' => [
                         'current_page' => $get['page'],
                         'page_size' => round($get['per'],3),
+                        'total_pages' => ceil($filesCount / $get['per']),
+                        'total' => $countFiles
+                    ],
+                    'files' => $filesAll,
+                ];
+            }else{
+                $data = [
+                    'folder' => $get['folder'],
+                    'sub_folders' => $foldersAry,
+                    'page' => [
+                        'current_page' => $get['page'],
+                        'page_size' => $get['per'],
                         'total_pages' => ceil($filesCount / $get['per']),
                         'total' => $countFiles
                     ],
