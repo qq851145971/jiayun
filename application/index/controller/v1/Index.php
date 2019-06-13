@@ -4,7 +4,6 @@ namespace app\index\controller\v1;
 
 use app\index\controller\Base;
 use think\Db;
-use app\common\controller\Redis;
 use app\common\controller\ApiException;
 
 class Index extends Base
@@ -72,8 +71,8 @@ class Index extends Base
                 'created_at' => strtotime($v['created_at']),
                 'updated_at' => strtotime($v['updated_at']),
                 'last_modified_time' => $v['last_modified_time'],
-                'is_deleted' => empty($v['deleted_at']) ? 'false' : 'true',
-                'mission_result' => "",
+                'is_deleted' => empty($v['deleted_at']) ? false : true,
+                'mission_result' => null,
             ];
         }
         if (isset($get['statistic_folders'])) {
@@ -217,7 +216,7 @@ class Index extends Base
                     'created_at' => strtotime($oneFiles['created_at']),
                     'updated_at' => strtotime($oneFiles['updated_at']),
                     'last_modified_time' => $oneFiles['last_modified_time'],
-                    'is_deleted' => empty($oneFiles['deleted_at']) ? 'false' : 'true',
+                    'is_deleted' => empty($oneFiles['deleted_at']) ? false : true,
                     'mission_result' => "",
                 ];
                 $count = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('client_id', $this->client_id)->where('member_id', $this->member_id)->sum('size');
@@ -320,7 +319,7 @@ class Index extends Base
                         'created_at' => strtotime($findFiles[0]['created_at']),
                         'updated_at' => strtotime($findFiles[0]['updated_at']),
                         'last_modified_time' => $findFiles[0]['last_modified_time'],
-                        'is_deleted' => empty($findFiles[0]['deleted_at']) ? 'false' : 'true',
+                        'is_deleted' => empty($findFiles[0]['deleted_at']) ? false : true,
                         'mission_result' => "",
                     ];
                     $resFiles = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('id', $findFiles[0]['id'])->update($edit);
@@ -378,7 +377,7 @@ class Index extends Base
                             'created_at' => strtotime($data['created_at']),
                             'updated_at' => strtotime($data['updated_at']),
                             'last_modified_time' => $data['last_modified_time'],
-                            'is_deleted' => empty($data['deleted_at']) ? 'false' : 'true',
+                            'is_deleted' => empty($data['deleted_at']) ? false : true,
                             'mission_result' => "",
                         ];
                         try {
@@ -630,7 +629,7 @@ class Index extends Base
                 'created_at' => strtotime($files['created_at']),
                 'updated_at' => strtotime($files['updated_at']),
                 'last_modified_time' => $files['last_modified_time'],
-                'is_deleted' => empty($files['deleted_at']) ? 'false' : 'true',
+                'is_deleted' => empty($files['deleted_at']) ? false : true,
                 'mission_result' => "",
             ];
         }

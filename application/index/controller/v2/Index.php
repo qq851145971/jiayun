@@ -45,7 +45,7 @@ class Index extends Base
                 'created_at'=>strtotime($v['created_at']),
                 'updated_at'=>strtotime($v['updated_at']),
                 'last_modified_time'=>$v['last_modified_time'],
-                'is_deleted'=>empty($v['deleted_at']) ? 'false' : 'true',
+                'is_deleted'=>empty($v['deleted_at']) ? false : true,
             ];
         }
         return show($this->client_name, $code = "0,0", $msg = "", $errors = [], $data);

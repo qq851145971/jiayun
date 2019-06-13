@@ -149,7 +149,7 @@ class Aliyun extends Controller
                         'created_at' => strtotime($files['updated_at']),
                         'updated_at' => strtotime($files['updated_at']),
                         'last_modified_time' => $files['last_modified_time'],
-                        'is_deleted' => empty($files['deleted_at']) ? 'false' : 'true'
+                        'is_deleted' => empty($files['deleted_at']) ? false: true
                     ];
                     $data = [
                         'target_app' => null,
