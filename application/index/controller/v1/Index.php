@@ -414,7 +414,11 @@ class Index extends Base
         $oss = new \OSS\OssClient(Config('env.aliyun_oss.KeyId'), Config('env.aliyun_oss.KeySecret'), Config('env.aliyun_oss.Endpoint'), false);
         return $oss;
     }
-
+    private function intranet_oss()
+    {
+        $oss = new \OSS\OssClient(Config('env.aliyun_oss.KeyId'), Config('env.aliyun_oss.KeySecret'), Config('env.aliyun_oss.IntranetEndpoint'), false);
+        return $oss;
+    }
     /**
      * 修改文件接口
      * User: 陈大剩
@@ -435,7 +439,11 @@ class Index extends Base
                 'Content-Disposition' => 'attachment; filename="' . $name . '"'
             ));
         try {
-            $ossClient = $this->new_oss();
+            if (Config('env.aliyun_oss.DefaultEndpoint')=="development"){
+                $ossClient = $this->new_oss();
+            }else{
+                $ossClient = $this->intranet_oss();
+            }
             $res = $ossClient->copyObject($fromBucket, $fromObject, $toBucket, $toObject, $options);
             if ($res) return "1";
         } catch (\Exception $e) {
@@ -460,7 +468,12 @@ class Index extends Base
                 'x-oss-meta-self-define-title' => 'user define meta info',
             ));
         try {
-            $ossClient = $this->new_oss();
+            if (Config('env.aliyun_oss.DefaultEndpoint')=="development"){
+                $ossClient = $this->new_oss();
+            }else{
+                $ossClient = $this->intranet_oss();
+            }
+
             $res = $ossClient->uploadFile($bucket, $object, $Path, $options);
             $signedUrl = $ossClient->signUrl($bucket, $object, 3153600000);
             $res['signedUrl'] = htmlspecialchars_decode($signedUrl);
