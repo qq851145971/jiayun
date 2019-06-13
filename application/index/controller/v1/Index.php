@@ -1019,7 +1019,7 @@ class Index extends Base
                         'id' => $uuid,
                         'member_id' => $this->member_id,
                         'data_file_id' => $data['uuid'],
-                        'expiration' => date("Y-m-d H:i:s"),
+                        'expiration' => date("Y-m-d H:i:s", time() + 15000000000),
                         'next_expiration' => date("Y-m-d H:i:s"),
                         'created_at' => date("Y-m-d H:i:s"),
                         'updated_at' => date("Y-m-d H:i:s"),
@@ -1027,14 +1027,13 @@ class Index extends Base
                         'short_url' => $str,
                         'visit_times' => 0
                     ];
-
                     $res = Db::table('sharings')->insert($sharData);
                     if ($res) {
                         $resData = [
                             'filename' => $tot['filename'],
                             'sharing' => [
                                 'file_uuid' => $data['uuid'],
-                                'expiration' => $sharData['created_at'],
+                                'expiration' => $sharData['expiration'],
                                 'secret' => "",
                                 'share_link' => config('env.website_hostname') . "/s/" . $str,
                                 'created_at' => strtotime($sharData['created_at'])
@@ -1049,7 +1048,7 @@ class Index extends Base
                             'filename' => $tot['filename'],
                             'sharing' => [
                                 'file_uuid' => $data['uuid'],
-                                'expiration' => $shar['created_at'],
+                                'expiration' => $shar['expiration'],
                                 'secret' => "",
                                 'share_link' => config('env.website_hostname') . "/s/" . $shar['short_url'],
                                 'created_at' => strtotime($shar['created_at'])
@@ -1064,7 +1063,7 @@ class Index extends Base
                     'filename' => $tot['filename'],
                     'sharing' => [
                         'file_uuid' => $data['uuid'],
-                        'expiration' => $count['created_at'],
+                        'expiration' => $count['expiration'],
                         'secret' => "",
                         'share_link' => config('env.website_hostname') . "/s/" . $count['short_url'],
                         'created_at' => strtotime($count['created_at'])
@@ -1110,7 +1109,7 @@ class Index extends Base
                     'filename' => $tot['filename'],
                     'sharing' => [
                         'file_uuid' => $data['uuid'],
-                        'expiration' => $sharData['created_at'],
+                        'expiration' => $sharData['expiration'],
                         'secret' => "$rand",
                         'share_link' => config('env.website_hostname') . "/s/" . $str,
                         'created_at' => strtotime($sharData['created_at'])

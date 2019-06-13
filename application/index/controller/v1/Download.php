@@ -37,7 +37,7 @@ class Download extends Controller
             return $this->fetch('download/index');
         }else{
             if (strtotime($find['expiration'])>=time()){
-                return $this->redirect(':3013/download/'.$name);
+                return $this->redirect('/download/'.$name);
             }else{
                 return "已过期";
             }
