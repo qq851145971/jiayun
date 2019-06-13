@@ -65,7 +65,7 @@ class Index extends Base
                 'access_type' => $access_type,
                 'filename' => $v['filename'],
                 'size' => round($v['size'],3),
-                'download_link' => Config('env.oss_custom_host') . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $v['id'] . "?" . $v['download_url'],
+                'download_link' => get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $v['id'] . "?" . $v['download_url'],
                 'thumbnail' => "",
                 'content_type' => $v['content_type'],
                 'folder' => $v['folder'],
@@ -210,7 +210,7 @@ class Index extends Base
                     'access_type' => $access_type,
                     'filename' => $name,
                     'size' => round($oneFiles['size'],3),
-                    'download_link' => Config('env.oss_custom_host') . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $oneFiles['id'] . "?" . $oneFiles['download_url'],
+                    'download_link' => get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $oneFiles['id'] . "?" . $oneFiles['download_url'],
                     'thumbnail' => "",
                     'content_type' => $oneFiles['content_type'],
                     'folder' => $post['folder'],
@@ -313,7 +313,7 @@ class Index extends Base
                         'access_type' => $access_type,
                         'filename' => $name,
                         'size' => round($findFiles[0]['size'],3),
-                        'download_link' => Config('env.oss_custom_host') . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $findFiles[0]['id'] . "?" . $findFiles[0]['download_url'],
+                        'download_link' => get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $findFiles[0]['id'] . "?" . $findFiles[0]['download_url'],
                         'thumbnail' => "",
                         'content_type' => $findFiles[0]['content_type'],
                         'folder' => $findFiles[0]['folder'],
@@ -371,7 +371,7 @@ class Index extends Base
                             'access_type' => $access_type,
                             'filename' => $data['filename'],
                             'size' => round($data['size'],3),
-                            'download_link' => Config('env.oss_custom_host') . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $data['id'] . "?" . $data['download_url'],
+                            'download_link' => get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $data['id'] . "?" . $data['download_url'],
                             'thumbnail' => "",
                             'content_type' => $data['content_type'],
                             'folder' => $data['folder'],
@@ -623,7 +623,7 @@ class Index extends Base
                 'access_type' => $access_type,
                 'filename' => $files['filename'],
                 'size' => round($files['size'],3),
-                'download_link' => Config('env.oss_custom_host') . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $files['id'] . "?" . $files['download_url'],
+                'download_link' => get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $files['id'] . "?" . $files['download_url'],
                 'thumbnail' => "",
                 'content_type' => $files['content_type'],
                 'folder' => $files['folder'],
@@ -1014,7 +1014,7 @@ class Index extends Base
                     } catch (OssException $e) {
                         return errorMsg('101', $e->getMessage(), 400);
                     }
-                    $str = $this->shorturl(Config('env.oss_custom_host') . $fileName);
+                    $str = $this->shorturl(get_oss_custom_host() . $fileName);
                     $uuid = guid();
                     $sharData = [
                         'id' => $uuid,
@@ -1087,7 +1087,7 @@ class Index extends Base
                 return errorMsg('101', $e->getMessage(), 400);
             }
             $url = explode("?", $res['signedUrl']);
-            $str = $this->shorturl(Config('env.oss_custom_host') . $fileName . "?" . $url[1]);
+            $str = $this->shorturl(get_oss_custom_host() . $fileName . "?" . $url[1]);
             $rand = $this->GetRandStr(4);
             $uuid = guid();
             $sharData = [

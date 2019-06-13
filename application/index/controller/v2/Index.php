@@ -38,7 +38,7 @@ class Index extends Base
                 'access_type'=>$access_type,
                 'filename'=>$v['filename'],
                 'size'=>round($v['size'],3),
-                'download_link'=>Config('env.oss_custom_host') . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $v['id'] . "?" . $v['download_url'],
+                'download_link'=>get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $v['id'] . "?" . $v['download_url'],
                 'thumbnail'=>"",
                 'content_type'=>$v['content_type'],
                 'folder'=>$v['folder'],
@@ -208,7 +208,7 @@ class Index extends Base
     {
         $id = config('env.aliyun_oss.KeyId');
         $key = config('env.aliyun_oss.KeySecret');
-        $host = config('env.oss_custom_host');
+        $host = get_oss_custom_host();
         // $callbackUrl为上传回调服务器的URL，请将下面的IP和Port配置为您自己的真实URL信息。
         $callbackUrl = config('env.callback_url') . "/api/files/post_callback";
         $dir = "private" . "/" . $this->member_id . "/" . $this->client_name;          // 用户上传文件时指定的前缀。

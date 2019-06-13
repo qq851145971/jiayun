@@ -31,7 +31,7 @@ class Download extends Controller
         $app=Db::table('clients')->where('id',$files['client_id'])->field('code')->find();
         if (empty($find['secret'])){
             $this->assign('name',$files['filename']);
-            $url=config('env.oss_custom_host')."/private/".$find['member_id']."/".$app['code']."/".$find['data_file_id'];
+            $url=get_oss_custom_host()."/private/".$find['member_id']."/".$app['code']."/".$find['data_file_id'];
             $this->assign('url',$url);
             Db::table('sharings')->where('short_url',$name)->setInc('visit_times');
             return $this->fetch('download/index');
@@ -51,7 +51,7 @@ class Download extends Controller
             if ($data['share']['password']==$find['secret']){
                 $files=Db::table('data_files')->where('id',$find['data_file_id'])->whereNull('deleted_at')->find();
                 $app=Db::table('clients')->where('id',$files['client_id'])->field('code')->find();
-                $url=config('env.oss_custom_host')."/private/".$find['member_id']."/".$app['code']."/".$find['data_file_id']."?".htmlspecialchars_decode($find['download_url']);
+                $url=get_oss_custom_host()."/private/".$find['member_id']."/".$app['code']."/".$find['data_file_id']."?".htmlspecialchars_decode($find['download_url']);
                 $this->assign('name',$files['filename']);
                 $this->assign('url',$url);
                 Db::table('sharings')->where('short_url',$name)->setInc('visit_times');

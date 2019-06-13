@@ -184,4 +184,13 @@ function get_files($files){
     }
     return $files;
 }
+function get_oss_custom_host(){
+    $host=Config('env.oss_custom_host');
+    if ($host==""){
+       $str="https://".Config('env.aliyun_oss.Bucket').".".Config('env.aliyun_oss.Endpoint');
+        return $str;
+    }else{
+       return $host;
+    }
+}
 

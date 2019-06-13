@@ -142,7 +142,7 @@ class Aliyun extends Controller
                         'access_type' => $access_type,
                         'filename' => $files['filename'],
                         'size' => $params['size'] / 1024,
-                        'download_link' => Config('env.oss_custom_host') . "/" . $params['filename'] . "?" . $download_url,
+                        'download_link' => get_oss_custom_host() . "/" . $params['filename'] . "?" . $download_url,
                         'thumbnail' => "",
                         'content_type' => $params['mimeType'],
                         'folder' => $files['folder'],
