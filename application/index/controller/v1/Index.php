@@ -38,6 +38,13 @@ class Index extends Base
         if (!isset($get['page'])) $get['page'] = "1";
         if (!isset($get['per'])) $get['per'] = "20";
         $get['folder'] = $this->screen($get['folder']);
+        if (isset($get['target_app'])){
+            $app_id = Db::table('clients')->where('code', $get['target_app'])->field('code,id')->find();
+            if (!empty($app_id)) {
+                $this->client_id=$app_id['id'];
+                $this->client_name=$get['target_app'];
+            }
+        }
         $foldersAry = $this->fileTree($get['folder'], 0);
         $this->folder = $get['folder'];
         $where = $statistic_folders = [];
@@ -649,7 +656,7 @@ class Index extends Base
     {
         $used_space = Db::table('members')->where('id', $this->member_id)->field('used_space')->find();
         $data = [
-            'used_space' => $used_space['used_space']
+            'used_space' => round($used_space['used_space'],2)
         ];
         return show($this->client_name, $code = "0,0", $msg = "", [], $data);
     }
@@ -686,6 +693,12 @@ class Index extends Base
                     $tot[] = $this->batchFolder($folder, $id);
                 }
             }
+        }
+        try {
+            $count = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('client_id', $this->client_id)->where('member_id', $this->member_id)->sum('size');
+            Db::table('members')->where('id', $this->member_id)->data(['used_space' => $count])->update();
+        } catch (\Exception $e) {
+
         }
         return show($this->client_name, $code = "0,0", $msg = "", [], $tot);
     }
@@ -1057,7 +1070,6 @@ class Index extends Base
                         return show($this->client_name, '0,0', $msg = "", [], $resData);
                     }
                 }
-
             } else {
                 $resData = [
                     'filename' => $tot['filename'],

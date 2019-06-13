@@ -136,6 +136,8 @@ class Aliyun extends Controller
                 }
                 $resInfo = Db::table('data_files')->where('id', $uuid)->whereNull('deleted_at')->update(['etag' => $params['etag'], 'size' => $params['size'] / 1024, 'content_type' => $params['mimeType'],'download_url' => $download_url,'suffix'=>$extstr]);
                 if ($resInfo) {
+                    $count = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('client_id', $files['client_id'])->where('member_id',  $files['member_id'])->sum('size');
+                    Db::table('members')->where('id', $files['member_id'])->data(['used_space' => $count])->update();
                     $access_type = $files['access_type'] == 0 ? 'private' : 'public';
                     $tot = [
                         'id' => $uuid,
