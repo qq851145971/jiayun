@@ -93,7 +93,7 @@ class Index extends Base
             ];
         }
         if (isset($get['include_statistic'])) {
-            if ($get['include_statistic'] == 1 && $get['folder'] =="/") {
+            if ($get['include_statistic'] == 1) {
                 $findFolder = Db::table('file_folders')->whereNull('deleted_at')->where('member_id', $this->member_id)->where('parent_id', 0)->where('name', $this->member_id)->find();
                 $statistic_folders[] = [
                     'id' => $findFolder['id'],
@@ -978,6 +978,25 @@ class Index extends Base
             $modify_time = $data['modify_time'];
             $upData['last_modified_time'] = $modify_time;
         }
+        $fileName = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $data['uuid'];
+        $ossClient=$this->new_oss();
+        $options = array(
+            'headers' => array(
+                'Content-Disposition' => 'attachment; filename="' . $upData['filename'] . '"',
+            ));
+        try {
+            $ossClient->copyObject(Config('env.aliyun_oss.Bucket'), $fileName, Config('env.aliyun_oss.Bucket'), $fileName, $options);
+            $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.Bucket'),$fileName, 315360000);
+            $res['signedUrl'] = htmlspecialchars_decode($signedUrl);
+            list($download_head, $download_url) = explode("?", $res['signedUrl']);
+        } catch (\Exception $e) {
+            $tot = [
+                'uuid' => $data['uuid'],
+                'msg' => 'Invalid client'
+            ];
+            return $tot;
+        }
+        $upData['download_url']=$download_url;
         $upRes = Db::table('data_files')->whereNotNull('size')->where('id', $data['uuid'])->whereNull('deleted_at')->where('client_id', $this->client_id)->where('member_id', $this->member_id)->data($upData)->update();
         if ($upRes) {
             if (empty($data['folder'])) $upData['folder'] = $find['folder'];
@@ -989,6 +1008,19 @@ class Index extends Base
             ];
             return $tot;
         } else {
+            $options = array(
+                'headers' => array(
+                    'Content-Disposition' => 'attachment; filename="' . $find['filename'] . '"',
+                ));
+            try {
+                $ossClient->copyObject(Config('env.aliyun_oss.Bucket'), $fileName, Config('env.aliyun_oss.Bucket'), $fileName, $options);
+            } catch (\Exception $e) {
+                $tot = [
+                    'uuid' => $data['uuid'],
+                    'msg' => 'Invalid client'
+                ];
+                return $tot;
+            }
             $tot = [
                 'uuid' => $data['uuid'],
                 'msg' => 'Sql Not Exists'
