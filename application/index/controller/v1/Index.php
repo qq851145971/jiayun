@@ -93,8 +93,7 @@ class Index extends Base
             ];
         }
         if (isset($get['include_statistic'])) {
-            $get['include_statistic'] = intval($get['include_statistic']);
-            if ($get['include_statistic'] == 1 && $get['folder'] = "/") {
+            if ($get['include_statistic'] == 1 && $get['folder'] =="/") {
                 $findFolder = Db::table('file_folders')->whereNull('deleted_at')->where('member_id', $this->member_id)->where('parent_id', 0)->where('name', $this->member_id)->find();
                 $statistic_folders[] = [
                     'id' => $findFolder['id'],
