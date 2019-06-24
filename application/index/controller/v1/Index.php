@@ -5,7 +5,7 @@ namespace app\index\controller\v1;
 use app\index\controller\Base;
 use think\Db;
 use app\common\controller\ApiException;
-
+use think\facade\Log;
 class Index extends Base
 {
     /**
@@ -199,7 +199,7 @@ class Index extends Base
             }
         }
 
-        if (isset($post['uuid']) && empty($file)) {
+        if (!empty($post['uuid']) && empty($file)) {
             $fileName = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $post['uuid'];
             if (isset($post['target_app'])) {
                 $toFileName = "private" . $this->member_id . "/" . $post['target_app'] . "/" . $post['uuid'];
@@ -394,7 +394,7 @@ class Index extends Base
                         'last_modified_time' => $last_modified_time,
                         'suffix' => $getExtension,
                     ];
-                    if (isset($post['uuid'])) {
+                    if (!empty($post['uuid'])) {
                         $res = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('id', $uuid)->update($data);
                     } else {
                         $res = Db::table('data_files')->insert($data);

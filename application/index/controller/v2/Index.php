@@ -10,46 +10,52 @@ namespace app\index\controller\v2;
 
 use think\Db;
 use app\index\controller\Base;
-
+use think\facade\Log;
 class Index extends Base
 {
     private $filename = "";
-    public function files(){
+
+    public function files()
+    {
         $get = input('get.');
-        $time=0;
-        if (isset($get['last_refresh_time'])){
-            if (empty($get['last_refresh_time'])){
-                $time=0;
-            }else{
-                $time=$get['last_refresh_time'];
+        $time = 0;
+        if (isset($get['last_refresh_time'])) {
+            if (empty($get['last_refresh_time'])) {
+                $time = 0;
+            } else {
+                $time = $get['last_refresh_time'];
             }
-        }else{
-            $time=0;
+        } else {
+            $time = 0;
         }
-        if (strlen($time)==10){
-            $time=$time."000";
+        if (strlen($time) == 10) {
+            $time = $time . "000";
         }
-        $data=[];
-        $res=Db::table('data_files')->where('client_id', $this->client_id)->where('member_id', $this->member_id)->whereNull('deleted_at')->where('last_modified_time','>=',$time)->select();
-        foreach ($res as $v){
+        $data = [];
+        $res = Db::table('data_files')->where('client_id', $this->client_id)->where('member_id', $this->member_id)->whereNull('deleted_at')->where('last_modified_time', '>=', $time)->select();
+        foreach ($res as $v) {
             $access_type = $v['access_type'] == 0 ? 'private' : 'public';
-            $data[]=[
-                'id'=>$v['id'],
-                'access_type'=>$access_type,
-                'filename'=>$v['filename'],
-                'size'=>round($v['size'],3),
-                'download_link'=>get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $v['id'] . "?" . $v['download_url'],
-                'thumbnail'=>"",
-                'content_type'=>$v['content_type'],
-                'folder'=>$v['folder'],
-                'created_at'=>strtotime($v['created_at']),
-                'updated_at'=>strtotime($v['updated_at']),
-                'last_modified_time'=>$v['last_modified_time'],
-                'is_deleted'=>empty($v['deleted_at']) ? false : true,
+            $data[] = [
+                'id' => $v['id'],
+                'access_type' => $access_type,
+                'filename' => $v['filename'],
+                'size' => round($v['size'], 3),
+                'download_link' => get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $v['id'] . "?" . $v['download_url'],
+                'thumbnail' => "",
+                'content_type' => $v['content_type'],
+                'folder' => $v['folder'],
+                'created_at' => strtotime($v['created_at']),
+                'updated_at' => strtotime($v['updated_at']),
+                'last_modified_time' => $v['last_modified_time'],
+                'is_deleted' => empty($v['deleted_at']) ? false : true,
             ];
         }
-        return show($this->client_name, $code = "0,0", $msg = "", $errors = [], $data);
+        $tot=[
+            'files'=>$data
+        ];
+        return show($this->client_name, $code = "0,0", $msg = "", $errors = [], $tot);
     }
+
     public function upload()
     {
         $post = input('post.');
@@ -73,22 +79,22 @@ class Index extends Base
                     'msg' => "Invalid client"
                 ];
                 return show("null", $errors['type'], $errors['msg'], $errors);
-            }else{
-                $this->client_id=$appName['id'];
-                $this->client_name=$post['target_app'];
+            } else {
+                $this->client_id = $appName['id'];
+                $this->client_name = $post['target_app'];
             }
         }
         if (!isset($post['folder'])) $post['folder'] = "";
         $post['folder'] = $this->screen($post['folder']);
-        if (isset($post['uuid'])){
+        if (isset($post['uuid'])) {
             $oneFiles = Db::table('data_files')->whereNull('deleted_at')->where('id', $post['uuid'])->find();
-            if (empty($oneFiles)){
+            if (empty($oneFiles)) {
                 $errors = [
                     'type' => '100,4',
                     'msg' => "uuid empty"
                 ];
                 return show("null", $errors['type'], $errors['msg'], $errors);
-            }else{
+            } else {
                 $fileName = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $post['uuid'];
                 $id = $this->directory($post['folder']);
                 if (isset($post['modify_time'])) {
@@ -111,7 +117,7 @@ class Index extends Base
                         ));
                     try {
                         $ossClient->copyObject(Config('env.aliyun_oss.Bucket'), $fileName, Config('env.aliyun_oss.Bucket'), $fileName, $options);
-                        $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.Bucket'),$fileName, 315360000);
+                        $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.Bucket'), $fileName, 315360000);
                         $res['signedUrl'] = htmlspecialchars_decode($signedUrl);
                         list($download_head, $download_url) = explode("?", $res['signedUrl']);
                     } catch (\Exception $e) {
@@ -121,21 +127,21 @@ class Index extends Base
                         ];
                         return show("null", $errors['type'], $errors['msg'], $errors);
                     }
-                    $edit['download_url']=$download_url;
-                    $edit['filename']=$post['filename'];
+                    $edit['download_url'] = $download_url;
+                    $edit['filename'] = $post['filename'];
                     $ra = $this->oss_qianming();
-                    $res = Db::table('data_files')->where('id',$post['uuid'])->update($edit);
-                    if ($res){
+                    $res = Db::table('data_files')->where('id', $post['uuid'])->update($edit);
+                    if ($res) {
                         $tot = [
                             'id' => $post['uuid'],
                             'authorize' => $ra
                         ];
                         return show($this->client_name, $code = "0,0", $msg = "", [], $tot);
                     }
-                }else{
+                } else {
                     $ra = $this->oss_qianming();
-                    $res = Db::table('data_files')->where('id',$post['uuid'])->update($edit);
-                    if ($res){
+                    $res = Db::table('data_files')->where('id', $post['uuid'])->update($edit);
+                    if ($res) {
                         $tot = [
                             'id' => $post['uuid'],
                             'authorize' => $ra
@@ -144,7 +150,7 @@ class Index extends Base
                     }
                 }
             }
-        }else{
+        } else {
             if (isset($post['filename'])) {
                 if (empty($post['filename'])) {
                     $errors = [
@@ -179,7 +185,7 @@ class Index extends Base
                 'last_modified_time' => get13TimeStamp()
             ];
             if (isset($post['modify_time'])) {
-                $data['last_modified_time']=$post['modify_time'];
+                $data['last_modified_time'] = $post['modify_time'];
             }
             $res = Db::table('data_files')->insert($data);
             if ($res) {

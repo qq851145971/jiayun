@@ -13,7 +13,7 @@ use app\common\controller\ApiException;
 use think\Config;
 use think\Db;
 use \Firebase\JWT\JWT;
-
+use think\facade\Log;
 class Base extends Controller
 {
     /**
@@ -65,7 +65,11 @@ class Base extends Controller
 
     public function authInfo($client_id)
     {
-        $app = Db::table('clients')->where('app_id', $client_id)->field('code,id')->find();
+        if (substr($client_id, - 5)=="17pdf"){
+            $app = Db::table('clients')->where('code', '17pdf')->field('code,id')->find();
+        }else{
+            $app = Db::table('clients')->where('app_id', $client_id)->field('code,id')->find();
+        }
         $this->client_id = $app['id'];
         return $this->client_name = $app['code'];
     }
