@@ -20,9 +20,12 @@ class Index extends Base
     private $getFilename = "";
     private $filesId = [];
     private $filesList = [];
-    public function index(){
-        return ;
+
+    public function index()
+    {
+        return;
     }
+
     /**
      * 获取文件列表
      * User: 陈大剩
@@ -38,11 +41,11 @@ class Index extends Base
         if (!isset($get['page'])) $get['page'] = "1";
         if (!isset($get['per'])) $get['per'] = "20";
         $get['folder'] = $this->screen($get['folder']);
-        if (isset($get['target_app'])){
+        if (isset($get['target_app'])) {
             $app_id = Db::table('clients')->where('code', $get['target_app'])->field('code,id')->find();
             if (!empty($app_id)) {
-                $this->client_id=$app_id['id'];
-                $this->client_name=$get['target_app'];
+                $this->client_id = $app_id['id'];
+                $this->client_name = $get['target_app'];
             }
         }
         $foldersAry = $this->fileTree($get['folder'], 0);
@@ -54,18 +57,18 @@ class Index extends Base
         }
         if (isset($get['include_statistic'])) {
             $get['include_statistic'] = intval($get['include_statistic']);
-            if ($get['include_statistic']==1){
+            if ($get['include_statistic'] == 1) {
                 foreach ($foldersAry as $k => $v) {
                     if ($v['name'] == 'Converted') {
                         $statistic_folders[] = $v;
                     }
                 }
             }
-            if (empty($statistic_folders)){
+            if (empty($statistic_folders)) {
                 $statistic_folders[0] = [
-                    'id'=>null,
-                    'name'=>'Converted',
-                    'files_count'=>0
+                    'id' => null,
+                    'name' => 'Converted',
+                    'files_count' => 0
                 ];
             }
         }
@@ -80,7 +83,7 @@ class Index extends Base
                 'id' => $v['id'],
                 'access_type' => $access_type,
                 'filename' => $v['filename'],
-                'size' => round($v['size'],3),
+                'size' => round($v['size'], 3),
                 'download_link' => get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $v['id'] . "?" . $v['download_url'],
                 'thumbnail' => "",
                 'content_type' => $v['content_type'],
@@ -106,13 +109,13 @@ class Index extends Base
                     'statistic_folders' => $statistic_folders,
                     'page' => [
                         'current_page' => $get['page'],
-                        'page_size' => round($get['per'],3),
+                        'page_size' => round($get['per'], 3),
                         'total_pages' => ceil($filesCount / $get['per']),
                         'total' => $countFiles
                     ],
                     'files' => $filesAll,
                 ];
-            }else{
+            } else {
                 $data = [
                     'folder' => $get['folder'],
                     'sub_folders' => $foldersAry,
@@ -236,7 +239,7 @@ class Index extends Base
                     'id' => $oneFiles['id'],
                     'access_type' => $access_type,
                     'filename' => $name,
-                    'size' => round($oneFiles['size'],3),
+                    'size' => round($oneFiles['size'], 3),
                     'download_link' => get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $oneFiles['id'] . "?" . $oneFiles['download_url'],
                     'thumbnail' => "",
                     'content_type' => $oneFiles['content_type'],
@@ -275,17 +278,17 @@ class Index extends Base
                 } else {
                     $uuid = guid();
                 }
-                $str =strtoupper(md5(file_get_contents($info->getPathname())));
+                $str = strtoupper(md5(file_get_contents($info->getPathname())));
                 $findFiles = Db::table('data_files')
                     ->whereNull('deleted_at')
                     ->whereNotNull('size')
                     ->where('member_id', $this->member_id)
                     ->where('client_id', $this->client_id)
-                    ->where('etag',$str)
+                    ->where('etag', $str)
                     ->where('folder', $post['folder'])
                     ->where('suffix', $info->getExtension())
                     ->select();
-                if (count($findFiles) >= 1){
+                if (count($findFiles) >= 1) {
                     $fileName = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $findFiles[0]['id'];
                     if (isset($post['target_app'])) {
                         $toFileName = "private" . $this->member_id . "/" . $post['target_app'] . "/" . $post['uuid'];
@@ -304,7 +307,7 @@ class Index extends Base
                             ));
                         try {
                             $ossClient->copyObject(Config('env.aliyun_oss.Bucket'), $fileName, Config('env.aliyun_oss.Bucket'), $fileName, $options);
-                            $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.Bucket'),$fileName, 315360000);
+                            $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.Bucket'), $fileName, 315360000);
                             $res['signedUrl'] = htmlspecialchars_decode($signedUrl);
                             list($download_head, $download_url) = explode("?", $res['signedUrl']);
                         } catch (\Exception $e) {
@@ -314,7 +317,7 @@ class Index extends Base
                             ];
                             return show("null", $errors['type'], $errors['msg'], $errors);
                         }
-                        $edit['download_url']=$download_url;
+                        $edit['download_url'] = $download_url;
                     } else {
                         $name = $findFiles[0]['filename'];
                     }
@@ -322,7 +325,7 @@ class Index extends Base
                         $edit = [
                             'folder' => $post['folder'],
                             'folder_id' => $id,
-                            'filename'=>$name,
+                            'filename' => $name,
                             'client_id' => $client_id,
                             'last_modified_time' => $post['modify_time']
                         ];
@@ -330,16 +333,16 @@ class Index extends Base
                         $edit = [
                             'folder' => $post['folder'],
                             'folder_id' => $id,
-                            'filename'=>$name,
+                            'filename' => $name,
                             'client_id' => $client_id,
                         ];
                     }
-                    $access_type = $oneFiles['access_type'] == 0 ? 'private' : 'public';
+                    $access_type = $findFiles[0]['access_type'] == 0 ? 'private' : 'public';
                     $filesAll[] = [
                         'id' => $findFiles[0]['id'],
                         'access_type' => $access_type,
                         'filename' => $name,
-                        'size' => round($findFiles[0]['size'],3),
+                        'size' => round($findFiles[0]['size'], 3),
                         'download_link' => get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $findFiles[0]['id'] . "?" . $findFiles[0]['download_url'],
                         'thumbnail' => "",
                         'content_type' => $findFiles[0]['content_type'],
@@ -351,6 +354,11 @@ class Index extends Base
                         'mission_result' => "",
                     ];
                     $resFiles = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('id', $findFiles[0]['id'])->update($edit);
+                    $real_path = $info->getRealPath();
+                    if(file_exists($real_path)){
+                        unset($info);
+                        unlink($real_path);  //删除文件
+                    }
                     return show($this->client_name, $code = "0,0", $msg = "", $errors = [], $filesAll);
                 }
                 $this->getFilename = $getFilename;
@@ -375,7 +383,7 @@ class Index extends Base
                         'etag' => $this->etag($resInfo['etag']),
                         'access_type' => 0,
                         'filename' => $this->getFilename,
-                        'size' => round($resInfo['info']['size_upload'] / 1024,3),
+                        'size' => round($resInfo['info']['size_upload'] / 1024, 3),
                         'content_type' => $resInfo['oss-requestheaders']['Content-Type'],
                         'folder' => $post['folder'],
                         'download_url' => $download_url,
@@ -397,7 +405,7 @@ class Index extends Base
                             'id' => $data['id'],
                             'access_type' => $access_type,
                             'filename' => $data['filename'],
-                            'size' => round($data['size'],3),
+                            'size' => round($data['size'], 3),
                             'download_link' => get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $data['id'] . "?" . $data['download_url'],
                             'thumbnail' => "",
                             'content_type' => $data['content_type'],
@@ -414,7 +422,11 @@ class Index extends Base
                         } catch (\Exception $e) {
 
                         }
-
+                        $real_path = $info->getRealPath();
+                        if(file_exists($real_path)){
+                            unset($info);
+                            unlink($real_path);  //删除文件
+                        }
                         return show($this->client_name, $code = "0,0", $msg = "", $errors = [], $filesAll);
                     }
                 }
@@ -435,11 +447,13 @@ class Index extends Base
         $oss = new \OSS\OssClient(Config('env.aliyun_oss.KeyId'), Config('env.aliyun_oss.KeySecret'), Config('env.aliyun_oss.Endpoint'), false);
         return $oss;
     }
+
     private function intranet_oss()
     {
         $oss = new \OSS\OssClient(Config('env.aliyun_oss.KeyId'), Config('env.aliyun_oss.KeySecret'), Config('env.aliyun_oss.IntranetEndpoint'), false);
         return $oss;
     }
+
     /**
      * 修改文件接口
      * User: 陈大剩
@@ -460,9 +474,9 @@ class Index extends Base
                 'Content-Disposition' => 'attachment; filename="' . $name . '"'
             ));
         try {
-            if (Config('env.aliyun_oss.DefaultEndpoint')=="development"){
+            if (Config('env.aliyun_oss.DefaultEndpoint') == "development") {
                 $ossClient = $this->new_oss();
-            }else{
+            } else {
                 $ossClient = $this->intranet_oss();
             }
             $res = $ossClient->copyObject($fromBucket, $fromObject, $toBucket, $toObject, $options);
@@ -489,9 +503,9 @@ class Index extends Base
                 'x-oss-meta-self-define-title' => 'user define meta info',
             ));
         try {
-            if (Config('env.aliyun_oss.DefaultEndpoint')=="development"){
+            if (Config('env.aliyun_oss.DefaultEndpoint') == "development") {
                 $ossClient = $this->new_oss();
-            }else{
+            } else {
                 $ossClient = $this->intranet_oss();
             }
 
@@ -662,7 +676,7 @@ class Index extends Base
                 'id' => $files['id'],
                 'access_type' => $access_type,
                 'filename' => $files['filename'],
-                'size' => round($files['size'],3),
+                'size' => round($files['size'], 3),
                 'download_link' => get_oss_custom_host() . "/" . $access_type . "/" . $this->member_id . "/" . $this->client_name . "/" . $files['id'] . "?" . $files['download_url'],
                 'thumbnail' => "",
                 'content_type' => $files['content_type'],
@@ -690,7 +704,7 @@ class Index extends Base
     {
         $used_space = Db::table('members')->where('id', $this->member_id)->field('used_space')->find();
         $data = [
-            'used_space' => round($used_space['used_space'],2)
+            'used_space' => round($used_space['used_space'], 2)
         ];
         return show($this->client_name, $code = "0,0", $msg = "", [], $data);
     }
@@ -979,14 +993,14 @@ class Index extends Base
             $upData['last_modified_time'] = $modify_time;
         }
         $fileName = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $data['uuid'];
-        $ossClient=$this->new_oss();
+        $ossClient = $this->new_oss();
         $options = array(
             'headers' => array(
                 'Content-Disposition' => 'attachment; filename="' . $upData['filename'] . '"',
             ));
         try {
             $ossClient->copyObject(Config('env.aliyun_oss.Bucket'), $fileName, Config('env.aliyun_oss.Bucket'), $fileName, $options);
-            $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.Bucket'),$fileName, 315360000);
+            $signedUrl = $ossClient->signUrl(Config('env.aliyun_oss.Bucket'), $fileName, 315360000);
             $res['signedUrl'] = htmlspecialchars_decode($signedUrl);
             list($download_head, $download_url) = explode("?", $res['signedUrl']);
         } catch (\Exception $e) {
@@ -996,7 +1010,7 @@ class Index extends Base
             ];
             return $tot;
         }
-        $upData['download_url']=$download_url;
+        $upData['download_url'] = $download_url;
         $upRes = Db::table('data_files')->whereNotNull('size')->where('id', $data['uuid'])->whereNull('deleted_at')->where('client_id', $this->client_id)->where('member_id', $this->member_id)->data($upData)->update();
         if ($upRes) {
             if (empty($data['folder'])) $upData['folder'] = $find['folder'];
