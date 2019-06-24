@@ -6,6 +6,7 @@ use app\index\controller\Base;
 use think\Db;
 use app\common\controller\ApiException;
 use think\facade\Log;
+
 class Index extends Base
 {
     /**
@@ -198,8 +199,12 @@ class Index extends Base
                 $info = $file->move('./uploads', '');
             }
         }
-
-        if (!empty($post['uuid']) && empty($file)) {
+        if (preg_match("/^[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}$/", $post['uuid'])) {
+            $uid=1;
+        } else {
+            $uid=null;
+        }
+        if (!empty($uid) && empty($file)) {
             $fileName = "private" . "/" . $this->member_id . "/" . $this->client_name . "/" . $post['uuid'];
             if (isset($post['target_app'])) {
                 $toFileName = "private" . $this->member_id . "/" . $post['target_app'] . "/" . $post['uuid'];
@@ -232,7 +237,12 @@ class Index extends Base
             if (isset($post['filename']) || isset($post['target_app'])) {
                 $this->editObject(Config('env.aliyun_oss.Bucket'), $fileName, Config('env.aliyun_oss.Bucket'), $toFileName, $name, $oneFiles['content_type']);
             }
-            $resFiles = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('id', $post['uuid'])->update($edit);
+            try {
+                $resFiles = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('id', $post['uuid'])->update($edit);
+            } catch (\Exception $e) {
+                throw new ApiException("invalid input syntax for uuid", 500);
+            }
+
             if ($resFiles) {
                 $access_type = $oneFiles['access_type'] == 0 ? 'private' : 'public';
                 $resAll[] = [
@@ -274,7 +284,15 @@ class Index extends Base
                     $getExtension = $info->getExtension();
                 }
                 if (isset($post['uuid'])) {
-                    $uuid = $post['uuid'];
+                    if (empty($post['uuid'])) {
+                        $uuid = guid();
+                    } else {
+                        if (preg_match("/^[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}$/", $post['uuid'])) {
+                            $uuid = $post['uuid'];
+                        } else {
+                            $uuid = guid();
+                        }
+                    }
                 } else {
                     $uuid = guid();
                 }
@@ -355,7 +373,7 @@ class Index extends Base
                     ];
                     $resFiles = Db::table('data_files')->whereNotNull('size')->whereNull('deleted_at')->where('id', $findFiles[0]['id'])->update($edit);
                     $real_path = $info->getRealPath();
-                    if(file_exists($real_path)){
+                    if (file_exists($real_path)) {
                         unset($info);
                         unlink($real_path);  //删除文件
                     }
@@ -423,7 +441,7 @@ class Index extends Base
 
                         }
                         $real_path = $info->getRealPath();
-                        if(file_exists($real_path)){
+                        if (file_exists($real_path)) {
                             unset($info);
                             unlink($real_path);  //删除文件
                         }

@@ -97,7 +97,7 @@ class Aliyun extends Controller
             if (!empty($files)) {
                 $Mime = new Mime();
                 if ($params['mimeType']=="application/octet-stream"){
-                    $define=$Mime()->get_mimetype($files['filename']);
+                    $define=$Mime->get_mimetype($files['filename']);
                 }else{
                     $define=$params['mimeType'];
                 }

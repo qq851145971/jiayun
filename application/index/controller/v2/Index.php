@@ -86,7 +86,12 @@ class Index extends Base
         }
         if (!isset($post['folder'])) $post['folder'] = "";
         $post['folder'] = $this->screen($post['folder']);
-        if (isset($post['uuid'])) {
+        if (preg_match("/^[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}$/", $post['uuid'])) {
+            $uid=1;
+        } else {
+            $uid=null;
+        }
+        if (!empty($uid)) {
             $oneFiles = Db::table('data_files')->whereNull('deleted_at')->where('id', $post['uuid'])->find();
             if (empty($oneFiles)) {
                 $errors = [
