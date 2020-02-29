@@ -14,6 +14,7 @@ use think\Db;
 class Synchronization extends Controller
 {
     public function index(){
+
         $data=Db::connect(config('env.db2'))->name('members')->limit('10')->select();
         Log::record($data);
     }
